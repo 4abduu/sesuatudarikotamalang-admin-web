@@ -143,10 +143,14 @@ const motifByCategory: Record<string, React.FC<ArtProps>> = {
 export function CategoryMotif({
   category,
   className,
+  stroke,
+  strokeWidth,
 }: {
   category: string;
   className?: string;
+  stroke?: string;
+  strokeWidth?: number;
 }) {
   const M = motifByCategory[category] ?? LeafSprig;
-  return <M className={className} />;
+  return <M className={className} stroke={stroke} strokeWidth={strokeWidth} />;
 }

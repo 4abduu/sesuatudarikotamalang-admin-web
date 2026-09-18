@@ -90,8 +90,8 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   Lunas: "#6B7A3D",
   Selesai: "#A8452B",
   Dibatalkan: "#7A6A5A",
-  Kedaluwarsa: "#9B3320",
-  "Lewat Batas Pengambilan": "#B5502F",
+  // Kedaluwarsa: "#9B3320",
+  // "Lewat Batas Pengambilan": "#B5502F",
 };
 
 const TIME_SLOTS = ["10:00", "11:00", "13:00", "15:00", "17:00"];
