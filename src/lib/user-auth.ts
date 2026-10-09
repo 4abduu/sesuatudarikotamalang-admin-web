@@ -6,10 +6,10 @@ import { persist } from "zustand/middleware";
 export type Role = "buyer" | "creator" | "admin";
 
 export type User = {
-  id: string;
+  id: number | string;
   name: string;
   email: string;
-  password: string;
+  password?: string;
   role: Role;
   /** id of the creator record, if role === "creator" */
   creatorId?: string;

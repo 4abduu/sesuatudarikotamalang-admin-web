@@ -7,6 +7,8 @@ import { Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
 import { useUserAuth, demoUsers } from "@/lib/user-auth";
 import { LeafSprig } from "@/components/site/line-art";
 import Link from "next/link";
+import { apiFetch, ApiError } from "@/lib/api";
+import { User } from "@/lib/types";
 
 /**
  * Admin Login page BODY (without any chrome/wrapper).
@@ -23,29 +25,45 @@ export function AdminLoginContent() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
       toast.error("Isi email dan password dulu ya");
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      // Match admin demo by email/password; otherwise accept any as admin.
-      const admin =
-        email.trim() === demoUsers.admin.user.email
-          ? demoUsers.admin.user
-          : {
-              id: `u-admin-${Date.now()}`,
-              name: "Admin Toko",
-              email,
-              password,
-              role: "admin" as const,
-            };
-      login(admin);
+
+    try {
+      const data = await apiFetch<{ token: string; user: User }>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+      });
+
+      if (data.user.role !== "admin") {
+        toast.error("Akun ini bukan admin");
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      login(data.user);
       toast.success("Berhasil masuk. Selamat datang, Admin!");
       router.push("/admin");
-    }, 700);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 429) {
+          toast.error("Terlalu banyak percobaan. Silakan tunggu beberapa menit.");
+        } else if (err.code === "GOOGLE_ACCOUNT") {
+          toast.error("Akun ini hanya terdaftar via Google.");
+        } else {
+          toast.error(err.message);
+        }
+      } else {
+        toast.error("Gagal terhubung ke server");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const demoAdmin = () => {
