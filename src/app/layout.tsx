@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Baloo_2, Poppins } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import { SiteShell } from "@/components/site/site-shell";
 
 const baloo = Baloo_2({
   variable: "--font-baloo",
@@ -39,7 +38,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body
         className={`${baloo.variable} ${poppins.variable} antialiased bg-background text-foreground min-h-screen`}
       >
-        <SiteShell>{children}</SiteShell>
+        {children}
         <Toaster richColors position="top-center" />
       </body>
     </html>

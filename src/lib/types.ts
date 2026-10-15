@@ -196,6 +196,10 @@ export interface DashboardData {
   pendingApplications: number;
   lowStockCount: number;
   revenue7Days: number;
+  revenueByDay?: {
+    date: string;
+    revenue: number;
+  }[];
   statusDistribution: {
     status: OrderStatus;
     count: number;
@@ -203,7 +207,21 @@ export interface DashboardData {
   topSellingProducts: {
     id: number | string;
     name: string;
-    totalSold: number;
+    soldCount?: number;
+    totalSold?: number;
     totalRevenue: number;
+  }[];
+  slotDistribution?: {
+    time: string;
+    capacity: number;
+    booked: number;
+  }[];
+  upcomingPickups?: {
+    id: number | string;
+    orderNumber: string;
+    pickupDate: string;
+    pickupSlot: string;
+    user?: { id: number | string; name: string };
+    items?: { product?: { id: number | string; name: string } }[];
   }[];
 }

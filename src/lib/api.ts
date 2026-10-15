@@ -33,9 +33,9 @@ export async function apiFetch<T = unknown>(
   if (res.status === 401) {
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
-      if (window.location.pathname !== "/admin/login") {
+      if (window.location.pathname !== "/login") {
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.href = "/admin/login";
+        window.location.href = "/login";
       }
     }
   }
