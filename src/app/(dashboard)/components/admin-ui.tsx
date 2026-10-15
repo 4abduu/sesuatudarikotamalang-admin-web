@@ -69,22 +69,40 @@ export function StatCard({
   );
 }
 
-const orderStatusStyles: Record<OrderStatus, string> = {
+import { OrderStatus as OrderStatusType } from "@/lib/types";
+
+const orderStatusStyles: Record<string, string> = {
+  menunggu_bayar: "bg-[#C99A2E]/15 text-[#8a6a1a]",
+  lunas: "bg-accent/15 text-accent",
+  selesai: "bg-primary/15 text-primary",
+  dibatalkan: "bg-muted text-muted-foreground",
+  kedaluwarsa: "bg-destructive/15 text-destructive",
+  lewat_batas_pengambilan: "bg-[#B5502F]/15 text-[#B5502F]",
+  // Backward compatibility labels
   "Menunggu Bayar": "bg-[#C99A2E]/15 text-[#8a6a1a]",
   Lunas: "bg-accent/15 text-accent",
   Selesai: "bg-primary/15 text-primary",
   Dibatalkan: "bg-muted text-muted-foreground",
 };
 
-export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+const orderStatusLabels: Record<string, string> = {
+  menunggu_bayar: "Menunggu Bayar",
+  lunas: "Lunas",
+  selesai: "Selesai",
+  dibatalkan: "Dibatalkan",
+  kedaluwarsa: "Kedaluwarsa",
+  lewat_batas_pengambilan: "Lewat Batas",
+};
+
+export function OrderStatusBadge({ status }: { status: OrderStatusType | string }) {
   return (
     <span
       className={cn(
         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
-        orderStatusStyles[status],
+        orderStatusStyles[status] ?? "bg-muted text-muted-foreground",
       )}
     >
-      {status}
+      {orderStatusLabels[status] ?? status}
     </span>
   );
 }

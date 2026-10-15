@@ -18,7 +18,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useUserAuth } from "@/lib/user-auth";
 import { cn } from "@/lib/utils";
-import { LeafSprig } from "@/components/site/line-art";
+import { LogoHand } from "@/components/site/line-art";
 
 const navItems = [
   { href: "/", label: "Dashboard", Icon: LayoutDashboard },
@@ -34,7 +34,7 @@ function AdminLogo() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
       <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-        <LeafSprig className="h-5 w-5" strokeWidth={2.5} />
+        <LogoHand className="h-5 w-5" strokeWidth={2.5} />
       </span>
       <span className="flex flex-col leading-none">
         <span className="font-display text-sm font-bold text-foreground">
@@ -116,7 +116,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <AdminLogo />
         </div>
         <div className="flex-1 overflow-y-auto p-3">{navList}</div>
-        <div className="border-t border-border/80 p-3">
+        {/* <div className="border-t border-border/80 p-3">
           <Link
             href="/"
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/75 transition-colors hover:bg-secondary hover:text-foreground"
@@ -124,7 +124,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <Store className="h-[18px] w-[18px]" />
             Lihat Toko
           </Link>
-        </div>
+        </div> */}
       </aside>
 
       {/* Mobile sidebar (Sheet) */}

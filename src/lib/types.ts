@@ -29,6 +29,8 @@ export interface Category {
   id: number | string;
   name: string;
   slug: string;
+  iconName?: string | null;
+  blurb?: string | null;
 }
 
 export interface Artisan {
@@ -41,6 +43,9 @@ export interface Artisan {
   createdAt: string;
   updatedAt: string;
   products?: Product[];
+  productCount?: number;
+  avgRating?: number;
+  user?: User;
 }
 
 export interface VariantOption {
@@ -155,6 +160,7 @@ export interface Review {
   user?: {
     id: number | string;
     name: string;
+    email?: string;
     avatarUrl?: string | null;
   };
   product?: {
