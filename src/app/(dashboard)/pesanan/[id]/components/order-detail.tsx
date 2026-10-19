@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -16,7 +16,10 @@ import {
   AlertTriangle,
   Hourglass,
   PlusCircle,
-  Info,
+  Loader2,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { OrderStatusBadge } from "@/app/(dashboard)/components/admin-ui";
 import {
@@ -27,6 +30,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -45,23 +49,40 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  orderStatuses,
-  type Order,
-  type OrderStatus,
-} from "@/data/admin/orders";
+import { apiFetch, ApiError } from "@/lib/api";
+import { Order, OrderStatus } from "@/lib/types";
 import { formatRupiah } from "@/lib/format";
 import { toast } from "sonner";
-import {
-  useUserOrders,
-  holdExtensionQuotaMin,
-  holdExtendedTotal,
-  MAX_HOLD_EXTENSION_MINUTES,
-  type UserOrder,
-} from "@/lib/user-orders";
-import { useAdminSettings } from "@/lib/admin-settings";
 
+/* ─────────────────────────────────────────────────────────────────────────── *
+ *  Peta transisi status yang diizinkan backend (API_CONTRACT.md §9)
+ * ─────────────────────────────────────────────────────────────────────────── */
+const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  menunggu_bayar: ["lunas", "dibatalkan", "kedaluwarsa"],
+  lunas: ["selesai", "dibatalkan", "lewat_batas_pengambilan"],
+  lewat_batas_pengambilan: ["selesai", "dibatalkan"], // ← TAMBAHAN 2026-10-17
+  selesai: [],
+  dibatalkan: [],
+  kedaluwarsa: [],
+};
+
+const STATUS_LABEL: Record<OrderStatus, string> = {
+  menunggu_bayar: "Menunggu Bayar",
+  lunas: "Lunas",
+  selesai: "Selesai",
+  dibatalkan: "Dibatalkan",
+  kedaluwarsa: "Kedaluwarsa",
+  lewat_batas_pengambilan: "Lewat Batas Pengambilan",
+};
+
+const HOLD_EXTENSION_CHOICES = [15, 30, 60] as const;
+const MAX_HOLD_EXTENSION_MINUTES = 2880; // 2 hari
+
+/* ─────────────────────────────────────────────────────────────────────────── *
+ *  Helper formatters
+ * ─────────────────────────────────────────────────────────────────────────── */
 function formatDateID(iso: string, withWeekday = false) {
+  if (!iso) return "—";
   return new Date(iso).toLocaleDateString("id-ID", {
     weekday: withWeekday ? "long" : undefined,
     day: "numeric",
@@ -71,6 +92,7 @@ function formatDateID(iso: string, withWeekday = false) {
 }
 
 function formatDateTimeID(iso: string) {
+  if (!iso) return "—";
   return new Date(iso).toLocaleString("id-ID", {
     day: "numeric",
     month: "short",
@@ -80,128 +102,195 @@ function formatDateTimeID(iso: string) {
   });
 }
 
-function dummyEmail(name: string) {
-  const slug = name
-    .toLowerCase()
-    .replace(/[^a-z\s]/g, "")
-    .trim()
-    .replace(/\s+/g, ".");
-  return `${slug}@example.com`;
-}
+/* ─────────────────────────────────────────────────────────────────────────── *
+ *  OrderDetailContent — fetch + render detail pesanan dari API
+ * ─────────────────────────────────────────────────────────────────────────── */
+export function OrderDetailContent({ orderId }: { orderId: string }) {
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const DUMMY_PHONE = "+62 812-3456-7890";
-const PICKUP_LOCATION =
-  "Jl. Jenderal Basuki Rahmat No. 45, Kayutangan Heritage, Malang";
+  const fetchOrder = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch<{ order: Order }>(
+        `/api/admin/orders/${orderId}`
+      );
+      setOrder(res.order);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Gagal memuat detail pesanan dari server");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [orderId]);
 
-/** Local widening of OrderStatus so the manual Select can include the v3
- *  computed status "Lewat Batas Pengambilan" (admin can flip it back to
- *  "Selesai" when the customer eventually shows up). The static data file
- *  only persists the 4 base statuses — this widened value is UI-only. */
-type AdminOrderStatus = OrderStatus | "Lewat Batas Pengambilan";
+  useEffect(() => {
+    fetchOrder();
+  }, [fetchOrder]);
 
-const ADMIN_STATUS_OPTIONS: AdminOrderStatus[] = [
-  ...orderStatuses,
-  "Lewat Batas Pengambilan",
-];
-
-const HOLD_EXTENSION_CHOICES = [15, 30, 60] as const;
-
-/** Render an order-status badge that also knows the v3 "Lewat Batas
- *  Pengambilan" computed status (moss-on-cream). Falls through to the
- *  shared OrderStatusBadge for the 4 base statuses. */
-function AdminStatusBadge({ status }: { status: AdminOrderStatus }) {
-  if (status === "Lewat Batas Pengambilan") {
+  if (loading) {
     return (
-      <span className="inline-flex items-center rounded-full bg-[#6B7A3D]/15 px-2.5 py-0.5 text-xs font-semibold text-accent">
-        Lewat Batas Pengambilan
-      </span>
+      <div className="grid min-h-[400px] place-items-center rounded-xl border border-border bg-card p-12">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm font-medium">Memuat detail pesanan…</p>
+        </div>
+      </div>
     );
   }
-  return <OrderStatusBadge status={status} />;
+
+  if (error || !order) {
+    return (
+      <div className="grid min-h-[300px] place-items-center rounded-xl border border-destructive/30 bg-destructive/5 p-12 text-center">
+        <div className="flex flex-col items-center gap-4 max-w-md">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <div>
+            <h3 className="text-base font-bold text-foreground">
+              Gagal Memuat Pesanan
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {error ?? "Pesanan tidak ditemukan"}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button onClick={fetchOrder} variant="outline" className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Coba Lagi
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href="/pesanan">Kembali ke Daftar</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <OrderDetail order={order} onOrderUpdate={setOrder} />;
 }
 
-export function OrderDetail({ order }: { order: Order }) {
-  const [status, setStatus] = useState<AdminOrderStatus>(order.status);
-  const [draftStatus, setDraftStatus] = useState<AdminOrderStatus>(order.status);
+/* ─────────────────────────────────────────────────────────────────────────── *
+ *  OrderDetail — render + aksi pesanan
+ * ─────────────────────────────────────────────────────────────────────────── */
+function OrderDetail({
+  order: initialOrder,
+  onOrderUpdate,
+}: {
+  order: Order;
+  onOrderUpdate: (o: Order) => void;
+}) {
+  const [order, setOrder] = useState<Order>(initialOrder);
+  const [draftStatus, setDraftStatus] = useState<OrderStatus>(initialOrder.status);
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [extendingHold, setExtendingHold] = useState<number | null>(null);
+  const [cancellingOverdue, setCancellingOverdue] = useState(false);
 
-  // For the "Perpanjang Waktu Hold" card — read the LIVE order from the
-  // persisted user-orders store so extensions update the UI reactively.
-  // Static seed orders (o1..o8) are NOT in the store → liveOrder is undefined
-  // and the card treats the order as a "demo" (no-op + toast on extend).
-  const liveOrder = useUserOrders((s) =>
-    s.orders.find((o) => o.id === order.id),
-  );
-  const settings = useAdminSettings((s) => s.settings);
+  const allowedNext = ALLOWED_TRANSITIONS[order.status] ?? [];
+  const isFinal = allowedNext.length === 0;
 
-  const saveStatus = () => {
-    if (draftStatus === status) return;
-    setStatus(draftStatus);
-    toast.success("Status pesanan diperbarui", {
-      description: `${order.orderNumber} → ${draftStatus}`,
-    });
-  };
-
-  const cancelOrder = () => {
-    setStatus("Dibatalkan");
-    setDraftStatus("Dibatalkan");
-    toast.success("Pesanan dibatalkan", {
-      description: `${order.orderNumber} telah dibatalkan.`,
-    });
-  };
-
-  /* -------- Perpanjang Waktu Hold helpers -------- */
-
-  // Build a "view order" — prefer the live store order, else synthesize a
-  // pseudo-order (with default hold fields) so the static seed orders still
-  // show *some* hold info on the card.
-  const initialHoldMs = settings.holdDurationMinutes * 60_000;
-  const viewOrder: UserOrder = liveOrder ?? {
-    ...order,
-    userId: "",
-    variantLabel: order.variantName,
-    status: order.status,
-    // Synthesize hold fields from settings + createdAt for demo display.
-    holdExpiresAt:
-      order.paymentMethod === "Cash/QRIS"
-        ? new Date(new Date(order.createdAt).getTime() + initialHoldMs).toISOString()
-        : undefined,
-    holdExtendedMinutes: 0,
-  };
+  const isLateSettlement =
+    (order.status === "kedaluwarsa" || order.status === "dibatalkan") &&
+    order.payment?.status === "settlement";
 
   const showExtendHoldCard =
-    order.paymentMethod === "Cash/QRIS" && order.status === "Menunggu Bayar";
+    order.paymentMethod === "cod" && order.status === "menunggu_bayar";
 
-  const extendedTotal = holdExtendedTotal(viewOrder);
-  const remainingQuota = holdExtensionQuotaMin(viewOrder);
-  const quotaExhausted = remainingQuota <= 0;
-  const isDemoOrder = !liveOrder;
+  const remainingHoldQuota = MAX_HOLD_EXTENSION_MINUTES - (order.holdExtendedMinutes ?? 0);
+  const quotaExhausted = remainingHoldQuota <= 0;
 
-  const handleExtend = (minutes: number) => {
-    if (quotaExhausted) {
-      toast.error("Kuota perpanjangan habis", {
-        description: `Total perpanjangan sudah mencapai batas ${MAX_HOLD_EXTENSION_MINUTES} menit (2 hari).`,
+  /* ── Ubah status manual ── */
+  const handleSaveStatus = async () => {
+    if (draftStatus === order.status) return;
+    setSavingStatus(true);
+    try {
+      const res = await apiFetch<{ message: string; order: Order }>(
+        `/api/admin/orders/${order.id}/status`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status: draftStatus }),
+        }
+      );
+      setOrder(res.order);
+      onOrderUpdate(res.order);
+      setDraftStatus(res.order.status);
+      toast.success("Status pesanan diperbarui", {
+        description: `${res.order.orderNumber} → ${STATUS_LABEL[res.order.status]}`,
       });
-      return;
-    }
-    // Static seed orders aren't in the user-orders store → can't persist.
-    if (isDemoOrder) {
-      toast.info("Pesanan demo — perpanjangan tidak tersimpan", {
-        description: `${order.orderNumber} adalah pesanan contoh statis. Perpanjangan hold hanya tersimpan untuk pesanan nyata dari pembeli.`,
-      });
-      return;
-    }
-    const result = useUserOrders.getState().extendHold(order.id, minutes);
-    if (result) {
-      toast.success(`Hold diperpanjang ${minutes} menit`, {
-        description: `Hold berakhir pada ${formatDateTimeID(result)} WIB.`,
-      });
-    } else {
-      toast.error("Gagal memperpanjang hold", {
-        description:
-          "Kuota perpanjangan tidak mencukupi (cap 2 hari sejak pesanan dibuat).",
-      });
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Gagal memperbarui status";
+      toast.error("Gagal mengubah status", { description: msg });
+      // kembalikan draft ke status saat ini
+      setDraftStatus(order.status);
+    } finally {
+      setSavingStatus(false);
     }
   };
+
+  /* ── Batalkan order lewat_batas_pengambilan (quick-action button) ── */
+  const handleCancelOverdue = async () => {
+    setCancellingOverdue(true);
+    try {
+      const res = await apiFetch<{ message: string; order: Order }>(
+        `/api/admin/orders/${order.id}/status`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status: "dibatalkan" }),
+        }
+      );
+      setOrder(res.order);
+      onOrderUpdate(res.order);
+      setDraftStatus(res.order.status);
+      toast.success("Pesanan dibatalkan", {
+        description: `Stok varian telah dikembalikan secara otomatis.`,
+      });
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Gagal membatalkan pesanan";
+      toast.error("Gagal membatalkan", { description: msg });
+    } finally {
+      setCancellingOverdue(false);
+    }
+  };
+
+  /* ── Perpanjang hold ── */
+  const handleExtendHold = async (minutes: number) => {
+    if (quotaExhausted) {
+      toast.error("Kuota perpanjangan habis", {
+        description: `Total perpanjangan sudah mencapai batas 2 hari (${MAX_HOLD_EXTENSION_MINUTES} menit).`,
+      });
+      return;
+    }
+    setExtendingHold(minutes);
+    try {
+      const res = await apiFetch<{ message: string; order: Order }>(
+        `/api/admin/orders/${order.id}/extend-hold`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ additionalMinutes: minutes }),
+        }
+      );
+      setOrder(res.order);
+      onOrderUpdate(res.order);
+      toast.success(`Hold diperpanjang ${minutes} menit`, {
+        description: `Hold berakhir pada ${formatDateTimeID(res.order.holdExpiresAt ?? "")} WIB.`,
+      });
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Gagal memperpanjang hold";
+      toast.error("Gagal memperpanjang hold", { description: msg });
+    } finally {
+      setExtendingHold(null);
+    }
+  };
+
+  const firstItem = order.items?.[0];
+  const remainingCount = (order.items?.length ?? 0) - 1;
 
   return (
     <div>
@@ -220,7 +309,13 @@ export function OrderDetail({ order }: { order: Order }) {
           <h1 className="font-display text-2xl font-bold text-foreground md:text-[28px]">
             {order.orderNumber}
           </h1>
-          <AdminStatusBadge status={status} />
+          <OrderStatusBadge status={order.status} />
+          {isLateSettlement && (
+            <Badge variant="destructive" className="gap-1 text-xs">
+              <AlertCircle className="h-3 w-3" />
+              Sudah dibayar, perlu refund
+            </Badge>
+          )}
         </div>
         <p className="text-xs text-muted-foreground">
           Dibuat:{" "}
@@ -230,6 +325,68 @@ export function OrderDetail({ order }: { order: Order }) {
           WIB
         </p>
       </div>
+
+      {/* ── Banner: Lewat Batas Pengambilan + tombol Batalkan cepat ── */}
+      {order.status === "lewat_batas_pengambilan" && (
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                Lewat batas pengambilan
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Pembeli sudah melewati batas pengambilan. Batalkan pesanan ini
+                untuk mengembalikan stok varian secara otomatis.
+              </p>
+            </div>
+          </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-9 shrink-0 gap-2"
+                disabled={cancellingOverdue}
+              >
+                {cancellingOverdue ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Ban className="h-4 w-4" />
+                )}
+                Batalkan Pesanan
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 font-display">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  Batalkan pesanan {order.orderNumber}?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Status akan berubah dari{" "}
+                  <strong className="text-foreground">
+                    Lewat Batas Pengambilan
+                  </strong>{" "}
+                  menjadi{" "}
+                  <strong className="text-foreground">Dibatalkan</strong>.
+                  Stok varian akan dikembalikan secara otomatis oleh backend.
+                  Tindakan ini tidak dapat diurungkan.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Batal</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleCancelOverdue}
+                  className="bg-destructive text-white hover:bg-destructive/90"
+                >
+                  Ya, Batalkan
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
 
       {/* Detail grid */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -246,16 +403,20 @@ export function OrderDetail({ order }: { order: Order }) {
           <CardContent className="space-y-3 text-sm">
             <div>
               <p className="text-xs text-muted-foreground">Nama</p>
-              <p className="font-medium text-foreground">{order.buyerName}</p>
+              <p className="font-medium text-foreground">
+                {order.user?.name ?? "Pelanggan"}
+              </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">No. HP (dummy)</p>
-              <p className="font-medium text-foreground">{DUMMY_PHONE}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Email (dummy)</p>
+              <p className="text-xs text-muted-foreground">Email</p>
               <p className="break-all font-medium text-foreground">
-                {dummyEmail(order.buyerName)}
+                {order.user?.email ?? "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">User ID</p>
+              <p className="font-medium text-foreground">
+                #{String(order.userId)}
               </p>
             </div>
           </CardContent>
@@ -272,24 +433,34 @@ export function OrderDetail({ order }: { order: Order }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div>
-              <p className="text-xs text-muted-foreground">Produk</p>
-              <p className="font-medium text-foreground">{order.productName}</p>
-            </div>
-            <div className="flex gap-6">
-              <div>
-                <p className="text-xs text-muted-foreground">Varian</p>
-                <p className="font-medium text-foreground">{order.variantName}</p>
+            {order.items?.map((item, i) => (
+              <div
+                key={item.id}
+                className={
+                  i > 0 ? "border-t border-border pt-3" : undefined
+                }
+              >
+                <p className="font-medium text-foreground">
+                  {item.product?.name ?? "Produk"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {(item.variant?.combination ?? []).join(" / ") ||
+                    "Varian default"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatRupiah(item.priceSnapshot)}
+                </p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Jumlah</p>
-                <p className="font-medium text-foreground">1</p>
-              </div>
-            </div>
+            ))}
+            {remainingCount > 0 && (
+              <p className="text-xs text-muted-foreground">
+                +{remainingCount} item lainnya
+              </p>
+            )}
             <div className="flex items-center justify-between border-t border-border pt-3">
               <span className="text-xs text-muted-foreground">Total harga</span>
               <span className="font-display text-lg font-bold text-foreground">
-                {formatRupiah(order.total)}
+                {formatRupiah(order.totalAmount)}
               </span>
             </div>
           </CardContent>
@@ -316,13 +487,21 @@ export function OrderDetail({ order }: { order: Order }) {
                 {order.pickupSlot}
               </span>
             </div>
+            {order.pickupDeadline && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="font-medium">Batas pengambilan:</span>
+                <span>{formatDateTimeID(order.pickupDeadline)} WIB</span>
+              </div>
+            )}
             <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <div>
                 <p className="text-xs font-medium text-foreground">
                   Lokasi Pickup
                 </p>
-                <p className="text-xs text-muted-foreground">{PICKUP_LOCATION}</p>
+                <p className="text-xs text-muted-foreground">
+                  Jl. Jenderal Basuki Rahmat No. 45, Kayutangan Heritage, Malang
+                </p>
               </div>
             </div>
           </CardContent>
@@ -342,24 +521,51 @@ export function OrderDetail({ order }: { order: Order }) {
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Metode</span>
               <span className="font-medium text-foreground">
-                {order.paymentMethod}
+                {order.paymentMethod === "cod" ? "Cash/QRIS" : "Midtrans"}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Status</span>
-              <AdminStatusBadge status={status} />
-            </div>
+            {order.payment && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    Status Pembayaran
+                  </span>
+                  <span className="font-medium text-foreground capitalize">
+                    {order.payment.status}
+                  </span>
+                </div>
+                {order.payment.paidAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Dibayar
+                    </span>
+                    <span className="text-foreground">
+                      {formatDateTimeID(order.payment.paidAt)} WIB
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+            {isLateSettlement && (
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <p className="text-xs text-destructive font-medium">
+                  Pembayaran diterima setelah order gugur. Hubungi admin untuk
+                  proses refund manual.
+                </p>
+              </div>
+            )}
             <div className="flex items-center justify-between border-t border-border pt-3">
               <span className="text-xs text-muted-foreground">Total</span>
               <span className="font-display text-lg font-bold text-foreground">
-                {formatRupiah(order.total)}
+                {formatRupiah(order.totalAmount)}
               </span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Perpanjang Waktu Hold — Cash/QRIS + Menunggu Bayar only */}
+      {/* ── Perpanjang Waktu Hold (hanya cod + menunggu_bayar) ── */}
       {showExtendHoldCard && (
         <Card className="mt-4 border-[#C99A2E]/30 bg-[#FAF1DC]/30">
           <CardHeader className="pb-3">
@@ -371,37 +577,27 @@ export function OrderDetail({ order }: { order: Order }) {
             </CardTitle>
             <CardDescription>
               Tambah waktu penahanan stok untuk pesanan{" "}
-              <span className="font-medium text-foreground">Cash/QRIS</span> yang
-              belum dibayar. Cap total 2 hari (2880 menit) sejak pesanan dibuat.
+              <span className="font-medium text-foreground">Cash/QRIS</span>{" "}
+              yang belum dibayar. Cap total 2 hari sejak pesanan dibuat.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Demo notice for static seed orders */}
-            {isDemoOrder && (
-              <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span>
-                  Pesanan contoh statis — perpanjangan tidak akan tersimpan ke
-                  store. Untuk pesanan nyata dari pembeli, perubahan hold
-                  langsung tersimpan &amp; reaktif di UI.
-                </span>
-              </div>
-            )}
-
-            {/* Current hold status */}
+            {/* Ringkasan hold */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-lg border border-border bg-card p-3">
                 <p className="text-xs text-muted-foreground">Hold berakhir</p>
                 <p className="mt-0.5 font-medium text-foreground">
-                  {viewOrder.holdExpiresAt
-                    ? formatDateTimeID(viewOrder.holdExpiresAt)
+                  {order.holdExpiresAt
+                    ? formatDateTimeID(order.holdExpiresAt)
                     : "—"}
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3">
-                <p className="text-xs text-muted-foreground">Total diperpanjang</p>
+                <p className="text-xs text-muted-foreground">
+                  Total diperpanjang
+                </p>
                 <p className="mt-0.5 font-medium text-foreground">
-                  {extendedTotal} menit
+                  {order.holdExtendedMinutes ?? 0} menit
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3">
@@ -413,12 +609,12 @@ export function OrderDetail({ order }: { order: Order }) {
                       : "mt-0.5 font-medium text-accent"
                   }
                 >
-                  {Math.max(0, Math.round(remainingQuota))} menit
+                  {Math.max(0, remainingHoldQuota)} menit
                 </p>
               </div>
             </div>
 
-            {/* Progress bar showing quota usage */}
+            {/* Progress bar */}
             <div className="space-y-1">
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div
@@ -428,44 +624,49 @@ export function OrderDetail({ order }: { order: Order }) {
                       100,
                       Math.max(
                         0,
-                        ((MAX_HOLD_EXTENSION_MINUTES - remainingQuota) /
+                        (((order.holdExtendedMinutes ?? 0) /
                           MAX_HOLD_EXTENSION_MINUTES) *
-                          100,
-                      ),
+                          100)
+                      )
                     )}%`,
                   }}
                 />
               </div>
               <p className="text-[11px] text-muted-foreground">
-                {Math.round(remainingQuota) <= 0
+                {quotaExhausted
                   ? "Kuota perpanjangan habis"
                   : `Terpakai ${Math.round(
-                      (MAX_HOLD_EXTENSION_MINUTES - remainingQuota) /
-                        MAX_HOLD_EXTENSION_MINUTES *
-                        100,
-                    )}% dari batas 2 hari sejak pesanan dibuat.`}
+                      ((order.holdExtendedMinutes ?? 0) /
+                        MAX_HOLD_EXTENSION_MINUTES) *
+                        100
+                    )}% dari batas 2 hari.`}
               </p>
             </div>
 
-            {/* Action buttons */}
+            {/* Tombol tambah */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <span className="text-xs font-medium text-muted-foreground">
                 Tambah waktu:
               </span>
               <div className="flex flex-wrap gap-2">
                 {HOLD_EXTENSION_CHOICES.map((minutes) => {
-                  const wouldExceed = minutes > remainingQuota;
+                  const wouldExceed = minutes > remainingHoldQuota;
+                  const isLoading = extendingHold === minutes;
                   return (
                     <Button
                       key={minutes}
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={quotaExhausted || wouldExceed}
-                      onClick={() => handleExtend(minutes)}
+                      disabled={quotaExhausted || wouldExceed || extendingHold !== null}
+                      onClick={() => handleExtendHold(minutes)}
                       className="gap-1.5"
                     >
-                      <PlusCircle className="h-3.5 w-3.5" />
+                      {isLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <PlusCircle className="h-3.5 w-3.5" />
+                      )}
                       {minutes} menit
                     </Button>
                   );
@@ -482,102 +683,82 @@ export function OrderDetail({ order }: { order: Order }) {
         </Card>
       )}
 
-      {/* Ubah Status Manual */}
-      <Card className="mt-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 font-display text-base font-bold">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
-              <Hash className="h-4 w-4" />
-            </span>
-            Ubah Status Manual
-          </CardTitle>
-          <CardDescription>
-            Termasuk opsi{" "}
-            <span className="font-medium text-foreground">
-              Lewat Batas Pengambilan → Selesai
-            </span>{" "}
-            jika pelanggan akhirnya datang mengambil barang.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="sm:w-64">
-              <label
-                htmlFor="status-select"
-                className="mb-1.5 block text-xs font-medium text-muted-foreground"
+      {/* ── Ubah Status Manual ── */}
+      {!isFinal && (
+        <Card className="mt-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 font-display text-base font-bold">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Hash className="h-4 w-4" />
+              </span>
+              Ubah Status Manual
+            </CardTitle>
+            <CardDescription>
+              Hanya transisi yang diizinkan backend yang tersedia. Pesan error
+              ditampilkan langsung dari server.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="sm:w-64">
+                <label
+                  htmlFor="status-select"
+                  className="mb-1.5 block text-xs font-medium text-muted-foreground"
+                >
+                  Pilih status tujuan
+                </label>
+                <Select
+                  value={draftStatus}
+                  onValueChange={(v) => setDraftStatus(v as OrderStatus)}
+                >
+                  <SelectTrigger id="status-select" className="w-full">
+                    <SelectValue placeholder="Pilih status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allowedNext.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {STATUS_LABEL[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={handleSaveStatus}
+                disabled={draftStatus === order.status || savingStatus}
+                className="h-9 gap-2 sm:mb-0"
               >
-                Pilih status
-              </label>
-              <Select
-                value={draftStatus}
-                onValueChange={(v) => setDraftStatus(v as AdminOrderStatus)}
-              >
-                <SelectTrigger id="status-select" className="w-full">
-                  <SelectValue placeholder="Pilih status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ADMIN_STATUS_OPTIONS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {savingStatus ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Simpan Status
+              </Button>
+              <p className="text-xs text-muted-foreground sm:ml-2">
+                Status saat ini:{" "}
+                <span className="font-medium text-foreground">
+                  {STATUS_LABEL[order.status]}
+                </span>
+              </p>
             </div>
-            <Button
-              onClick={saveStatus}
-              disabled={draftStatus === status}
-              className="h-9 gap-2 sm:mb-0"
-            >
-              <Save className="h-4 w-4" />
-              Simpan Status
-            </Button>
-            <p className="text-xs text-muted-foreground sm:ml-2">
-              Status saat ini:{" "}
-              <span className="font-medium text-foreground">{status}</span>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Actions */}
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="destructive"
-              className="h-10 gap-2"
-              disabled={status === "Dibatalkan"}
-            >
-              <Ban className="h-4 w-4" />
-              Batalkan Pesanan
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2 font-display">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                Batalkan pesanan {order.orderNumber}?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                Tindakan ini akan mengubah status pesanan menjadi{" "}
-                <strong className="text-foreground">Dibatalkan</strong>. Pembeli
-                akan menerima notifikasi pembatalan. Aksi ini bersifat dummy pada
-                mode demo.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Batal</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={cancelOrder}
-                className="bg-destructive text-white hover:bg-destructive/90"
-              >
-                Ya, Batalkan
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+      {/* ── Status final (tidak ada aksi) ── */}
+      {isFinal && (
+        <div className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-4 py-3">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            Status{" "}
+            <span className="font-semibold text-foreground">
+              {STATUS_LABEL[order.status]}
+            </span>{" "}
+            adalah status final. Tidak ada tindakan lebih lanjut yang tersedia.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -9,6 +9,15 @@ import {
   Trash2,
   Save,
   X,
+  Loader2,
+  Sparkles,
+  RefreshCw,
+  Edit3,
+  CheckCircle2,
+  AlertTriangle,
+  CloudOff,
+  ChevronRight,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -16,6 +25,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Card,
   CardContent,
@@ -30,10 +47,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { categories } from "@/data/categories";
-import { cartesian } from "@/data/products";
+import { apiFetch, ApiError } from "@/lib/api";
+import { Category } from "@/lib/types";
 import { formatRupiah } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+/** Cartesian product helper (sebelumnya dari @/data/products) */
+function cartesian(arrays: string[][]): string[][] {
+  return arrays.reduce<string[][]>(
+    (acc, curr) => acc.flatMap((a) => curr.map((b) => [...a, b])),
+    [[]]
+  );
+}
 
 export type ProductFormInitialValues = {
   name: string;
@@ -42,11 +67,14 @@ export type ProductFormInitialValues = {
   shortDesc: string;
   description: string;
   limited: boolean;
+  shopeeUrl?: string;
   singleStock: string;
   variantOptions: { name: string; valuesText: string }[];
   variantStocks: Record<string, string>;
+  variantIds?: Record<string, string>;
   hasStory: boolean;
   story: { title: string; body: string; process: string };
+  existingImages?: string[];
 };
 
 export const emptyInitialValues: ProductFormInitialValues = {
@@ -56,11 +84,14 @@ export const emptyInitialValues: ProductFormInitialValues = {
   shortDesc: "",
   description: "",
   limited: false,
+  shopeeUrl: "",
   singleStock: "",
   variantOptions: [],
   variantStocks: {},
+  variantIds: {},
   hasStory: false,
   story: { title: "", body: "", process: "" },
+  existingImages: [],
 };
 
 type Errors = {
@@ -71,12 +102,23 @@ type Errors = {
 export function ProductFormFields({
   initialValues,
   submitLabel,
+  submitting = false,
   onSubmit,
+  mode = "create",
 }: {
   initialValues: ProductFormInitialValues;
   submitLabel: string;
-  onSubmit: () => void;
+  submitting?: boolean;
+  onSubmit: (values: ProductFormInitialValues) => void;
+  mode?: "create" | "edit";
 }) {
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    apiFetch<{ categories: Category[] }>("/api/categories")
+      .then((res) => setCategories(res.categories || []))
+      .catch(() => {/* kategori gagal dimuat — select tetap bisa diisi manual */});
+  }, []);
   const router = useRouter();
   const [name, setName] = useState(initialValues.name);
   const [categoryId, setCategoryId] = useState(initialValues.categoryId);
@@ -159,7 +201,22 @@ export function ProductFormFields({
       toast.error("Lengkapi isian yang wajib diisi");
       return;
     }
-    onSubmit();
+    onSubmit({
+      name,
+      categoryId,
+      price,
+      shortDesc,
+      description,
+      limited,
+      shopeeUrl: initialValues.shopeeUrl,
+      singleStock,
+      variantOptions,
+      variantStocks,
+      variantIds: initialValues.variantIds,
+      hasStory,
+      story: { title: storyTitle, body: storyBody, process: storyProcess },
+      existingImages: initialValues.existingImages,
+    });
   }
 
   const priceNum = Number(price);
@@ -202,7 +259,7 @@ export function ProductFormFields({
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
+                    <SelectItem key={c.id} value={String(c.id)}>
                       {c.name}
                     </SelectItem>
                   ))}
@@ -478,6 +535,19 @@ export function ProductFormFields({
         </CardHeader>
         {hasStory && (
           <CardContent className="space-y-5">
+            {/* ===== Bantu Tulis dengan AI (opsional) ===== */}
+            <StoryAiHelperButton
+              productName={name}
+              category={categories.find((c) => String(c.id) === categoryId)?.name}
+              onApplyDraft={(draft) => {
+                setStoryTitle(draft.title);
+                setStoryBody(draft.body);
+              }}
+              hasExistingContent={
+                storyTitle.trim().length > 0 || storyBody.trim().length > 0
+              }
+            />
+
             <div className="space-y-1.5">
               <Label>Judul Cerita</Label>
               <Input
@@ -526,12 +596,17 @@ export function ProductFormFields({
           variant="ghost"
           onClick={() => router.push("/produk")}
           className="gap-1.5"
+          disabled={submitting}
         >
           <ArrowLeft className="h-4 w-4" />
           Batal
         </Button>
-        <Button type="submit" className="gap-2">
-          <Save className="h-4 w-4" />
+        <Button type="submit" className="gap-2" disabled={submitting}>
+          {submitting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
           {submitLabel}
         </Button>
       </div>
@@ -595,6 +670,367 @@ function PhotoDropzone({
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Bantu Tulis dengan AI — tombol opsional + dialog 4-state           */
+/*                                                                    */
+/* Menggunakan endpoint resmi: POST /api/ai/story-draft               */
+/* AI TIDAK PERNAH menyimpan otomatis ke server. Hanya mengisi        */
+/* Judul + Cerita di form parent via `onApplyDraft`.                  */
+/* ------------------------------------------------------------------ */
+
+type StoryAiDraft = {
+  title: string;
+  body: string;
+};
+
+type StoryAiState = "idle" | "loading" | "result" | "error";
+
+type StoryAiError = {
+  message: string;
+  code?: string;
+};
+
+function StoryAiHelperButton({
+  productName,
+  category,
+  onApplyDraft,
+  hasExistingContent,
+}: {
+  productName?: string;
+  category?: string;
+  onApplyDraft: (draft: StoryAiDraft) => void;
+  hasExistingContent: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="group flex w-full items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/10"
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+          <Sparkles className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-foreground">
+            Bantu Tulis dengan AI
+          </span>
+          <span className="block text-xs text-muted-foreground">
+            Isi poin singkat, AI susun draft ceritanya.
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-primary" />
+      </button>
+
+      <StoryAiDialog
+        open={open}
+        onOpenChange={setOpen}
+        productName={productName}
+        category={category}
+        onApplyDraft={onApplyDraft}
+        hasExistingContent={hasExistingContent}
+      />
+    </>
+  );
+}
+
+function StoryAiDialog({
+  open,
+  onOpenChange,
+  productName,
+  category,
+  onApplyDraft,
+  hasExistingContent,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  productName?: string;
+  category?: string;
+  onApplyDraft: (draft: StoryAiDraft) => void;
+  hasExistingContent: boolean;
+}) {
+  const [aiState, setAiState] = useState<StoryAiState>("idle");
+  const [draft, setDraft] = useState<StoryAiDraft | null>(null);
+  const [error, setError] = useState<StoryAiError | null>(null);
+
+  const [motif, setMotif] = useState("");
+  const [process, setProcess] = useState("");
+  const [inspiration, setInspiration] = useState("");
+
+  const validPoints = [motif.trim(), process.trim(), inspiration.trim()].filter(
+    (p) => p.length > 0 && p.length <= 300
+  );
+  const totalChars = validPoints.reduce((sum, p) => sum + p.length, 0);
+  const canGenerate = validPoints.length > 0 && totalChars >= 30;
+
+  function handleOpenChange(next: boolean) {
+    if (!next) {
+      setTimeout(() => {
+        setAiState("idle");
+        setDraft(null);
+        setError(null);
+      }, 200);
+    }
+    onOpenChange(next);
+  }
+
+  async function handleGenerate() {
+    if (!canGenerate) return;
+    setAiState("loading");
+    setError(null);
+
+    try {
+      const res = await apiFetch<{
+        draft: { judul: string; isi: string };
+        meta?: { aiGenerated: boolean };
+      }>("/api/ai/story-draft", {
+        method: "POST",
+        body: JSON.stringify({
+          productName: productName?.trim() || undefined,
+          category: category?.trim() || undefined,
+          motif: motif.trim() || undefined,
+          process: process.trim() || undefined,
+          inspiration: inspiration.trim() || undefined,
+        }),
+      });
+
+      if (res?.draft?.judul && res?.draft?.isi) {
+        setDraft({
+          title: res.draft.judul,
+          body: res.draft.isi,
+        });
+        setAiState("result");
+      } else {
+        throw new Error("Draft tidak valid dari bantuan AI");
+      }
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        setError({
+          message: err.message || "Bantuan AI sedang tidak tersedia",
+          code: err.code,
+        });
+      } else if (err instanceof Error) {
+        setError({ message: err.message });
+      } else {
+        setError({ message: "Terjadi kesalahan saat memproses permintaan AI" });
+      }
+      setAiState("error");
+    }
+  }
+
+  function handleUseDraft() {
+    if (!draft) return;
+    if (hasExistingContent) {
+      const ok = window.confirm(
+        "Isi cerita saat ini akan diganti dengan draft AI. Lanjut?"
+      );
+      if (!ok) return;
+    }
+    onApplyDraft(draft);
+    handleOpenChange(false);
+    toast.success("Draft dimasukkan ke form. Jangan lupa simpan produk ya.");
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 font-display">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            Bantu Tulis dengan AI
+          </DialogTitle>
+          <DialogDescription>
+            AI hanya memakai poin yang kamu tulis, tidak mengarang fakta.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* === State: idle === */}
+        {aiState === "idle" && (
+          <div className="space-y-4">
+            <StoryAiPointField
+              label="Motif / objek yang digambar"
+              placeholder="Contoh: Singa dengan latar arsitektur heritage Kayutangan"
+              value={motif}
+              onChange={setMotif}
+            />
+            <StoryAiPointField
+              label="Proses pembuatan"
+              placeholder="Contoh: Sketsa tangan manual lalu didigitalkan dan dicetak di kertas bertekstur"
+              value={process}
+              onChange={setProcess}
+            />
+            <StoryAiPointField
+              label="Inspirasi di baliknya"
+              placeholder="Contoh: Suasana sore jalan Basuki Rahmat di kala lampu jalan mulai menyala"
+              value={inspiration}
+              onChange={setInspiration}
+            />
+            {!canGenerate && (
+              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                Isi minimal satu poin singkat dengan total minimal 30 karakter ya (saat ini: {totalChars}/30).
+              </p>
+            )}
+            <Button
+              type="button"
+              onClick={handleGenerate}
+              disabled={!canGenerate}
+              className="w-full gap-2"
+            >
+              <Sparkles className="h-4 w-4" />
+              Buat Draft
+            </Button>
+          </div>
+        )}
+
+        {/* === State: loading === */}
+        {aiState === "loading" && (
+          <div className="space-y-4 py-2">
+            <div className="flex items-center gap-2 text-primary">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+              <span className="text-sm font-semibold">
+                AI lagi merangkai ceritamu…
+              </span>
+            </div>
+            <div className="space-y-2">
+              <div className="h-3.5 w-32 animate-pulse rounded bg-muted" />
+              <div className="h-2.5 w-full animate-pulse rounded bg-muted" />
+              <div className="h-2.5 w-[92%] animate-pulse rounded bg-muted" />
+              <div className="h-2.5 w-[85%] animate-pulse rounded bg-muted" />
+              <div className="mt-3 h-3.5 w-28 animate-pulse rounded bg-muted" />
+              <div className="h-2.5 w-full animate-pulse rounded bg-muted" />
+              <div className="h-2.5 w-[90%] animate-pulse rounded bg-muted" />
+            </div>
+          </div>
+        )}
+
+        {/* === State: result === */}
+        {aiState === "result" && draft && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 dark:text-amber-300">
+              <Eye className="h-4 w-4 shrink-0" />
+              <span className="text-xs font-semibold">
+                Draft dari AI — periksa dulu sebelum disimpan
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                Judul Cerita
+              </Label>
+              <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm font-semibold text-foreground">
+                {draft.title}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                Isi Cerita
+              </Label>
+              <div className="max-h-60 overflow-y-auto scroll-soft rounded-lg border border-border bg-muted/40 p-3 text-sm leading-relaxed text-foreground whitespace-pre-line">
+                {draft.body}
+              </div>
+            </div>
+            <Button
+              type="button"
+              onClick={handleUseDraft}
+              className="w-full gap-2"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Gunakan Draft Ini
+            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleGenerate}
+                className="gap-1.5"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Buat Ulang
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                className="gap-1.5"
+              >
+                <Edit3 className="h-4 w-4" />
+                Tulis Sendiri
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* === State: error === */}
+        {aiState === "error" && error && (
+          <div className="space-y-4">
+            <Alert variant="destructive">
+              <CloudOff className="h-4 w-4" />
+              <AlertTitle>Yah, ada kendala</AlertTitle>
+              <AlertDescription>{error.message}</AlertDescription>
+            </Alert>
+            <Button
+              type="button"
+              onClick={handleGenerate}
+              className="w-full gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Coba Lagi
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              className="w-full gap-1.5"
+            >
+              <Edit3 className="h-4 w-4" />
+              Tulis Sendiri
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StoryAiPointField({
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const over = value.length > 300;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label className="text-sm">{label}</Label>
+        <span
+          className={cn(
+            "text-[11px] tabular-nums",
+            over ? "text-destructive" : "text-muted-foreground"
+          )}
+        >
+          {value.length}/300
+        </span>
+      </div>
+      <Textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value.slice(0, 300))}
+        placeholder={placeholder}
+        rows={2}
+        className="resize-none"
+      />
     </div>
   );
 }
