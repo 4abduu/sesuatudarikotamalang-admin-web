@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useUserAuth } from "@/lib/user-auth";
 import { AdminShell } from "./components/admin-shell";
@@ -8,7 +8,6 @@ import { Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { User } from "@/lib/types";
 
-/** Wait for zustand-persist to rehydrate before deciding redirects. */
 function useAuthHydrated() {
   return useSyncExternalStore(
     (cb) => useUserAuth.persist.onFinishHydration(() => cb()),
@@ -27,9 +26,10 @@ export default function AuthedLayout({
   const hydrated = useAuthHydrated();
   const router = useRouter();
   const [checkingServer, setCheckingServer] = useState(true);
+  const hasVerifiedRef = useRef(false);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || hasVerifiedRef.current) return;
 
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token || !user || user.role !== "admin") {
@@ -37,7 +37,7 @@ export default function AuthedLayout({
       return;
     }
 
-    // Verify session with backend
+    hasVerifiedRef.current = true;
     let isSubscribed = true;
     apiFetch<{ user: User }>("/api/auth/me")
       .then((data) => {
@@ -52,7 +52,6 @@ export default function AuthedLayout({
       })
       .catch(() => {
         if (!isSubscribed) return;
-        // If API fails or backend offline, still allow if local state says admin (or redirect if 401 handled by apiFetch)
         setCheckingServer(false);
       });
 
