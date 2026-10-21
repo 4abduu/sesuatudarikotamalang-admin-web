@@ -32,7 +32,10 @@ export default function AuthedLayout({
     if (!hydrated || hasVerifiedRef.current) return;
 
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token || !user || user.role !== "admin") {
+    const currentUser = user || useUserAuth.getState().user;
+
+    if (!token || !currentUser || currentUser.role !== "admin") {
+      setCheckingServer(false);
       router.replace("/login");
       return;
     }
@@ -44,6 +47,8 @@ export default function AuthedLayout({
         if (!isSubscribed) return;
         if (data.user.role !== "admin") {
           localStorage.removeItem("token");
+          useUserAuth.getState().logout();
+          setCheckingServer(false);
           router.replace("/login");
         } else {
           login(data.user);
