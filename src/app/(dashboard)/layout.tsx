@@ -41,29 +41,23 @@ export default function AuthedLayout({
     }
 
     hasVerifiedRef.current = true;
-    let isSubscribed = true;
     apiFetch<{ user: User }>("/api/auth/me")
       .then((data) => {
-        if (!isSubscribed) return;
         if (data.user.role !== "admin") {
           localStorage.removeItem("token");
           useUserAuth.getState().logout();
-          setCheckingServer(false);
           router.replace("/login");
         } else {
           login(data.user);
-          setCheckingServer(false);
         }
       })
       .catch(() => {
-        if (!isSubscribed) return;
+        // Abaikan error jaringan/offline bila sesi lokal sudah valid
+      })
+      .finally(() => {
         setCheckingServer(false);
       });
-
-    return () => {
-      isSubscribed = false;
-    };
-  }, [hydrated, user, router, login]);
+  }, [hydrated, router, login]);
 
   if (!hydrated || checkingServer || !user || user.role !== "admin") {
     return (
