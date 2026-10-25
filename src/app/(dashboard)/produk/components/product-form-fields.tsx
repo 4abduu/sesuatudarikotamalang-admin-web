@@ -77,6 +77,13 @@ export type ProductFormInitialValues = {
   existingImages?: string[];
 };
 
+// [PATCH-3] Berkas yang dipilih di form (belum diunggah). Dikirim ke onSubmit sebagai argumen kedua
+// supaya halaman pemanggil (mis. Tambah Produk) dapat mengunggahnya ke POST /api/upload/multiple.
+export type ProductFormExtras = {
+  photos: File[];
+  processPhotos: File[];
+};
+
 export const emptyInitialValues: ProductFormInitialValues = {
   name: "",
   categoryId: "",
@@ -109,7 +116,7 @@ export function ProductFormFields({
   initialValues: ProductFormInitialValues;
   submitLabel: string;
   submitting?: boolean;
-  onSubmit: (values: ProductFormInitialValues) => void;
+  onSubmit: (values: ProductFormInitialValues, extras?: ProductFormExtras) => void; // [PATCH-3]
   mode?: "create" | "edit";
 }) {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -201,7 +208,8 @@ export function ProductFormFields({
       toast.error("Lengkapi isian yang wajib diisi");
       return;
     }
-    onSubmit({
+    onSubmit(
+      {
       name,
       categoryId,
       price,
@@ -216,7 +224,9 @@ export function ProductFormFields({
       hasStory,
       story: { title: storyTitle, body: storyBody, process: storyProcess },
       existingImages: initialValues.existingImages,
-    });
+      },
+      { photos, processPhotos }, // [PATCH-3]
+    );
   }
 
   const priceNum = Number(price);

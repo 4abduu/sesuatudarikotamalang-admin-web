@@ -9,9 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { OrderStatus } from "@/lib/types";
+import { OrderStatus, Artisan } from "@/lib/types";
 
 export const ALL_STATUS = "all";
+export const ALL_REFUND = "all";
+export const ALL_ARTISAN = "all";
 
 export const ORDER_STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
   { value: "menunggu_bayar", label: "Menunggu Bayar" },
@@ -22,11 +24,22 @@ export const ORDER_STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
   { value: "lewat_batas_pengambilan", label: "Lewat Batas Pengambilan" },
 ];
 
+export const REFUND_STATUS_OPTIONS = [
+  { value: "tidak_ada", label: "Tidak Ada Refund" },
+  { value: "menunggu", label: "Menunggu Refund (Perlu Refund)" },
+  { value: "selesai", label: "Refund Selesai" },
+];
+
 interface OrderToolbarProps {
   query: string;
   onQueryChange: (val: string) => void;
   statusFilter: string;
   onStatusChange: (val: string) => void;
+  refundFilter: string;
+  onRefundChange: (val: string) => void;
+  artisanFilter: string;
+  onArtisanChange: (val: string) => void;
+  artisans: Artisan[];
   dateFilter: string;
   onDateChange: (val: string) => void;
   onReset: () => void;
@@ -38,6 +51,11 @@ export function OrderToolbar({
   onQueryChange,
   statusFilter,
   onStatusChange,
+  refundFilter,
+  onRefundChange,
+  artisanFilter,
+  onArtisanChange,
+  artisans,
   dateFilter,
   onDateChange,
   onReset,
@@ -69,12 +87,12 @@ export function OrderToolbar({
           </div>
 
           {/* Status filter */}
-          <div className="lg:w-52">
+          <div className="lg:w-48">
             <label
               htmlFor="pesanan-status"
               className="mb-1.5 block text-xs font-medium text-muted-foreground"
             >
-              Status
+              Status Pesanan
             </label>
             <Select value={statusFilter} onValueChange={onStatusChange}>
               <SelectTrigger id="pesanan-status" className="w-full">
@@ -86,6 +104,52 @@ export function OrderToolbar({
                 {ORDER_STATUS_OPTIONS.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Refund filter */}
+          <div className="lg:w-48">
+            <label
+              htmlFor="pesanan-refund"
+              className="mb-1.5 block text-xs font-medium text-muted-foreground"
+            >
+              Status Refund
+            </label>
+            <Select value={refundFilter} onValueChange={onRefundChange}>
+              <SelectTrigger id="pesanan-refund" className="w-full">
+                <SelectValue placeholder="Semua refund" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_REFUND}>Semua refund</SelectItem>
+                {REFUND_STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Penjual filter */}
+          <div className="lg:w-48">
+            <label
+              htmlFor="pesanan-artisan"
+              className="mb-1.5 block text-xs font-medium text-muted-foreground"
+            >
+              Penjual
+            </label>
+            <Select value={artisanFilter} onValueChange={onArtisanChange}>
+              <SelectTrigger id="pesanan-artisan" className="w-full">
+                <SelectValue placeholder="Semua penjual" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_ARTISAN}>Semua penjual</SelectItem>
+                {artisans.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>
+                    {a.isOfficial ? `★ ${a.brandName} (Official)` : a.brandName}
                   </SelectItem>
                 ))}
               </SelectContent>

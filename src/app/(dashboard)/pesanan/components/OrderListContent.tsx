@@ -6,26 +6,33 @@ import { EmptyState } from "@/app/(dashboard)/components/admin-ui";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api";
-import { Order } from "@/lib/types";
+import { Order, Artisan } from "@/lib/types";
 
-import { OrderToolbar, ALL_STATUS } from "./OrderToolbar";
+import { OrderToolbar, ALL_STATUS, ALL_REFUND, ALL_ARTISAN } from "./OrderToolbar";
 import { OrderTable } from "./OrderTable";
 
 export function OrderListContent() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [artisans, setArtisans] = useState<Artisan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState(ALL_STATUS);
+  const [refundFilter, setRefundFilter] = useState(ALL_REFUND);
+  const [artisanFilter, setArtisanFilter] = useState(ALL_ARTISAN);
   const [dateFilter, setDateFilter] = useState("");
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch<{ orders: Order[] }>("/api/admin/orders");
-      setOrders(res.orders || []);
+      const [orderRes, artRes] = await Promise.all([
+        apiFetch<{ orders: Order[] }>("/api/admin/orders"),
+        apiFetch<{ artisans: Artisan[] }>("/api/admin/artisans?status=aktif").catch(() => ({ artisans: [] })),
+      ]);
+      setOrders(orderRes.orders || []);
+      setArtisans(artRes.artisans || []);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -42,10 +49,16 @@ export function OrderListContent() {
   }, [fetchOrders]);
 
   const hasActiveFilter =
-    statusFilter !== ALL_STATUS || dateFilter !== "" || query.trim() !== "";
+    statusFilter !== ALL_STATUS ||
+    refundFilter !== ALL_REFUND ||
+    artisanFilter !== ALL_ARTISAN ||
+    dateFilter !== "" ||
+    query.trim() !== "";
 
   const handleResetFilters = () => {
     setStatusFilter(ALL_STATUS);
+    setRefundFilter(ALL_REFUND);
+    setArtisanFilter(ALL_ARTISAN);
     setDateFilter("");
     setQuery("");
   };
@@ -55,6 +68,16 @@ export function OrderListContent() {
     return orders.filter((o) => {
       if (statusFilter !== ALL_STATUS && o.status !== statusFilter) {
         return false;
+      }
+      if (refundFilter !== ALL_REFUND && o.refundStatus !== refundFilter) {
+        return false;
+      }
+      if (artisanFilter !== ALL_ARTISAN) {
+        const hasArtisanItem = o.items?.some((item) => {
+          const artId = String(item.product?.artisanId ?? item.product?.artisan?.id ?? "");
+          return artId === String(artisanFilter);
+        });
+        if (!hasArtisanItem) return false;
       }
       if (dateFilter) {
         const orderDateStr = o.pickupDate ? o.pickupDate.split("T")[0] : "";
@@ -68,7 +91,7 @@ export function OrderListContent() {
       }
       return true;
     });
-  }, [orders, statusFilter, dateFilter, query]);
+  }, [orders, statusFilter, refundFilter, artisanFilter, dateFilter, query]);
 
   if (loading) {
     return (
@@ -107,6 +130,11 @@ export function OrderListContent() {
         onQueryChange={setQuery}
         statusFilter={statusFilter}
         onStatusChange={setStatusFilter}
+        refundFilter={refundFilter}
+        onRefundChange={setRefundFilter}
+        artisanFilter={artisanFilter}
+        onArtisanChange={setArtisanFilter}
+        artisans={artisans}
         dateFilter={dateFilter}
         onDateChange={setDateFilter}
         onReset={handleResetFilters}

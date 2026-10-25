@@ -39,6 +39,7 @@ export function ProductTable({
           <TableHeader>
             <TableRow className="bg-secondary/40 hover:bg-secondary/40">
               <TableHead className="pl-5">Produk</TableHead>
+              <TableHead>Penjual</TableHead>
               <TableHead>Kategori</TableHead>
               <TableHead>Harga</TableHead>
               <TableHead>Stok</TableHead>
@@ -52,6 +53,8 @@ export function ProductTable({
               const lowVariants = p.variants?.filter((v) => v.stock < LOW_STOCK_THRESHOLD) ?? [];
               const isLow = lowVariants.length > 0;
               const isToggling = togglingId === p.id;
+              const sellerName = p.artisan?.brandName || "Official Store";
+              const isOfficial = p.artisan?.isOfficial ?? (!p.artisanId || p.artisanId === "official");
 
               return (
                 <TableRow key={p.id}>
@@ -68,14 +71,24 @@ export function ProductTable({
                           SDK
                         </div>
                       )}
-                      <div className="min-w-0 max-w-[20rem]">
+                      <div className="min-w-0 max-w-[16rem]">
                         <p className="truncate font-medium text-foreground">
                           {p.name}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {p.shortDescription || p.artisan?.brandName || "Produk lokal"}
+                          {p.shortDescription || "Produk lokal"}
                         </p>
                       </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-sm font-medium text-foreground">{sellerName}</span>
+                      {isOfficial && (
+                        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[10px] font-semibold text-primary">
+                          Official Store
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -173,9 +186,17 @@ export function ProductTable({
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-foreground">{p.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {p.shortDescription || p.artisan?.brandName || "Produk lokal"}
+                    {p.shortDescription || "Produk lokal"}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs font-medium text-foreground">
+                      {p.artisan?.brandName || "Official Store"}
+                    </span>
+                    {(p.artisan?.isOfficial ?? (!p.artisanId || p.artisanId === "official")) && (
+                      <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[9px] font-semibold text-primary">
+                        Official Store
+                      </Badge>
+                    )}
                     <Badge variant="secondary" className="font-normal">
                       {p.category?.name ?? "Umum"}
                     </Badge>

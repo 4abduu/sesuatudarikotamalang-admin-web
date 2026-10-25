@@ -33,13 +33,39 @@ export interface Category {
   blurb?: string | null;
 }
 
+export type RefundStatus = "tidak_ada" | "menunggu" | "selesai";
+export type CancelReason = "permintaan_pembeli" | "kesalahan_toko";
+export type RefundState =
+  | "tidak_berlaku"
+  | "dalam_batas_waktu"
+  | "lewat_batas_waktu"
+  | "lewat_batas_pengambilan"
+  | "sudah_diambil"
+  | "menunggu_refund"
+  | "sudah_direfund";
+
+export interface OrderRefundInfo {
+  state: RefundState;
+  paid: boolean;
+  paidAt?: string | null;
+  eligibleUntil?: string | null;
+  refundWindowDays?: number;
+  refundStatus: RefundStatus;
+  refundedAt?: string | null;
+  canCancelByBuyerRequest: boolean;
+  canCancelByStoreFault: boolean;
+  canMarkRefunded: boolean;
+  disabledReason?: string | null;
+}
+
 export interface Artisan {
   id: number | string;
-  userId: number | string;
+  userId?: number | string | null;
   brandName: string;
   bio?: string | null;
   avatarUrl?: string | null;
   status: ArtisanStatus;
+  isOfficial?: boolean;
   createdAt: string;
   updatedAt: string;
   products?: Product[];
@@ -131,6 +157,10 @@ export interface Order {
   holdExpiresAt?: string | null;
   holdExtendedMinutes?: number;
   pickupDeadline?: string | null;
+  refundStatus?: RefundStatus;
+  refundedAt?: string | null;
+  cancelReason?: CancelReason | null;
+  refund?: OrderRefundInfo | null;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
@@ -191,8 +221,19 @@ export interface AppSettings {
   holdDurationMinutes: number;
   autoCancelEnabled: boolean;
   pickupDeadlineDays: number;
+  refundWindowDays?: number;
   whatsappAdminNumber: string;
   notificationEmail: string;
+  updatedAt: string;
+}
+
+export interface PendingRefundItem {
+  id: number | string;
+  orderNumber: string;
+  totalAmount: number;
+  buyerName: string;
+  paidAt?: string | null;
+  cancelReason?: string | null;
   updatedAt: string;
 }
 
@@ -230,4 +271,6 @@ export interface DashboardData {
     user?: { id: number | string; name: string };
     items?: { product?: { id: number | string; name: string } }[];
   }[];
+  pendingRefundCount?: number;
+  pendingRefunds?: PendingRefundItem[];
 }

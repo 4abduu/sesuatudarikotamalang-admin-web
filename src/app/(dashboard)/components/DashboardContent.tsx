@@ -14,6 +14,7 @@ import { TopSellingCard } from "./TopSellingCard";
 import { RecentActivityCard } from "./RecentActivityCard";
 import { UpcomingPickupsCard } from "./UpcomingPickupsCard";
 import { LowStockAlertCard } from "./LowStockAlertCard";
+import { PendingRefundsCard } from "./PendingRefundsCard";
 
 export function DashboardContent() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -96,12 +97,19 @@ export function DashboardContent() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Ringkasan 4 Kartu Stat */}
+      {/* 1. Ringkasan 5 Kartu Stat (termasuk Perlu Refund) */}
       <DashboardStatCards
         ordersToday={data.ordersToday ?? 0}
         readyForPickup={data.readyForPickup ?? 0}
         pendingApplications={data.pendingApplications ?? 0}
         lowStockCount={data.lowStockCount ?? 0}
+        pendingRefundCount={data.pendingRefundCount ?? 0}
+      />
+
+      {/* 1b. Kartu Daftar Antrean Refund (jika ada) */}
+      <PendingRefundsCard
+        pendingRefundCount={data.pendingRefundCount ?? 0}
+        pendingRefunds={data.pendingRefunds ?? []}
       />
 
       {/* 2 & 3. Baris Grafik: Pendapatan Minggu Ini + Donut Status Pesanan */}

@@ -7,7 +7,7 @@ import { EmptyState } from "@/app/(dashboard)/components/admin-ui";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api";
-import { Product, Category } from "@/lib/types";
+import { Product, Category, Artisan } from "@/lib/types";
 
 import { ProductToolbar } from "./ProductToolbar";
 import { ProductTable } from "./ProductTable";
@@ -15,24 +15,28 @@ import { ProductTable } from "./ProductTable";
 export function ProductListContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [artisans, setArtisans] = useState<Artisan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("all");
+  const [artisanId, setArtisanId] = useState("all");
   const [togglingId, setTogglingId] = useState<number | string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch produk admin dan daftar kategori secara paralel
-      const [prodRes, catRes] = await Promise.all([
+      // Fetch produk admin, daftar kategori, dan daftar artisan secara paralel
+      const [prodRes, catRes, artRes] = await Promise.all([
         apiFetch<{ products: Product[] }>("/api/admin/products"),
         apiFetch<{ categories: Category[] }>("/api/categories"),
+        apiFetch<{ artisans: Artisan[] }>("/api/admin/artisans?status=aktif").catch(() => ({ artisans: [] })),
       ]);
       setProducts(prodRes.products || []);
       setCategories(catRes.categories || []);
+      setArtisans(artRes.artisans || []);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -84,6 +88,9 @@ export function ProductListContent() {
       if (categoryId !== "all" && String(p.categoryId) !== String(categoryId)) {
         return false;
       }
+      if (artisanId !== "all" && String(p.artisanId) !== String(artisanId)) {
+        return false;
+      }
       if (q) {
         const nameMatch = p.name.toLowerCase().includes(q);
         const descMatch = (p.shortDescription || "").toLowerCase().includes(q);
@@ -92,7 +99,7 @@ export function ProductListContent() {
       }
       return true;
     });
-  }, [products, search, categoryId]);
+  }, [products, search, categoryId, artisanId]);
 
   if (loading) {
     return (
@@ -132,6 +139,9 @@ export function ProductListContent() {
         categoryId={categoryId}
         onCategoryChange={setCategoryId}
         categories={categories}
+        artisanId={artisanId}
+        onArtisanChange={setArtisanId}
+        artisans={artisans}
         totalFiltered={filtered.length}
       />
 

@@ -189,6 +189,8 @@ function OrderDetail({
   const [savingStatus, setSavingStatus] = useState(false);
   const [extendingHold, setExtendingHold] = useState<number | null>(null);
   const [cancellingOverdue, setCancellingOverdue] = useState(false);
+  const [cancellingWithReason, setCancellingWithReason] = useState(false);
+  const [markingRefunded, setMarkingRefunded] = useState(false);
 
   const allowedNext = ALLOWED_TRANSITIONS[order.status] ?? [];
   const isFinal = allowedNext.length === 0;
@@ -203,24 +205,51 @@ function OrderDetail({
   const remainingHoldQuota = MAX_HOLD_EXTENSION_MINUTES - (order.holdExtendedMinutes ?? 0);
   const quotaExhausted = remainingHoldQuota <= 0;
 
+  /* ── Muat ulang detail order untuk menyegarkan objek refund ── */
+  const reloadOrder = async () => {
+    try {
+      const res = await apiFetch<{ order: Order }>(`/api/orders/${order.id}`);
+      if (res.order) {
+        setOrder(res.order);
+        onOrderUpdate(res.order);
+        setDraftStatus(res.order.status);
+      }
+    } catch {
+      // fallback jika /api/orders/:id gagal, coba /api/admin/orders/:id
+      try {
+        const resAdmin = await apiFetch<{ order: Order }>(`/api/admin/orders/${order.id}`);
+        if (resAdmin.order) {
+          setOrder(resAdmin.order);
+          onOrderUpdate(resAdmin.order);
+          setDraftStatus(resAdmin.order.status);
+        }
+      } catch {
+        // no-op
+      }
+    }
+  };
+
   /* ── Ubah status manual ── */
   const handleSaveStatus = async () => {
     if (draftStatus === order.status) return;
     setSavingStatus(true);
     try {
+      const bodyPayload: { status: OrderStatus; cancelReason?: string } = { status: draftStatus };
+      if (draftStatus === "dibatalkan" && order.paymentMethod === "midtrans" && order.payment?.status === "settlement") {
+        bodyPayload.cancelReason = "kesalahan_toko";
+      }
+
       const res = await apiFetch<{ message: string; order: Order }>(
         `/api/admin/orders/${order.id}/status`,
         {
           method: "PATCH",
-          body: JSON.stringify({ status: draftStatus }),
+          body: JSON.stringify(bodyPayload),
         }
       );
-      setOrder(res.order);
-      onOrderUpdate(res.order);
-      setDraftStatus(res.order.status);
       toast.success("Status pesanan diperbarui", {
         description: `${res.order.orderNumber} → ${STATUS_LABEL[res.order.status]}`,
       });
+      await reloadOrder();
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : "Gagal memperbarui status";
@@ -232,23 +261,84 @@ function OrderDetail({
     }
   };
 
-  /* ── Batalkan order lewat_batas_pengambilan (quick-action button) ── */
-  const handleCancelOverdue = async () => {
-    setCancellingOverdue(true);
+  /* ── Batalkan pesanan berbayar dengan alasan spesifik ── */
+  const handleCancelWithReason = async (reason: "permintaan_pembeli" | "kesalahan_toko") => {
+    setCancellingWithReason(true);
     try {
       const res = await apiFetch<{ message: string; order: Order }>(
         `/api/admin/orders/${order.id}/status`,
         {
           method: "PATCH",
-          body: JSON.stringify({ status: "dibatalkan" }),
+          body: JSON.stringify({ status: "dibatalkan", cancelReason: reason }),
         }
       );
-      setOrder(res.order);
-      onOrderUpdate(res.order);
-      setDraftStatus(res.order.status);
+      toast.success("Pesanan berhasil dibatalkan", {
+        description: res.message || "Status refund pesanan kini menunggu pengembalian dana manual.",
+      });
+      await reloadOrder();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.code === "REFUND_WINDOW_PASSED") {
+          toast.error("Batas refund permintaan pembeli sudah lewat. Pakai 'kesalahan toko' bila memang kesalahan toko.");
+        } else {
+          toast.error(err.message);
+        }
+      } else {
+        toast.error("Gagal membatalkan pesanan");
+      }
+    } finally {
+      setCancellingWithReason(false);
+    }
+  };
+
+  /* ── Tandai refund manual selesai ── */
+  const handleMarkRefunded = async () => {
+    setMarkingRefunded(true);
+    try {
+      const res = await apiFetch<{ message: string; order: Order }>(
+        `/api/admin/orders/${order.id}/refunded`,
+        {
+          method: "PATCH",
+        }
+      );
+      toast.success(res.message || "Refund telah ditandai selesai");
+      await reloadOrder();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.code === "REFUND_NOT_PENDING") {
+          toast.error("Pesanan ini tidak sedang menunggu refund.");
+          await reloadOrder();
+        } else {
+          toast.error(err.message);
+        }
+      } else {
+        toast.error("Gagal menandai refund selesai");
+      }
+    } finally {
+      setMarkingRefunded(false);
+    }
+  };
+
+  /* ── Batalkan order lewat_batas_pengambilan (quick-action button) ── */
+  const handleCancelOverdue = async () => {
+    setCancellingOverdue(true);
+    try {
+      const bodyPayload: { status: string; cancelReason?: string } = { status: "dibatalkan" };
+      if (order.paymentMethod === "midtrans" && (order.refund?.paid || order.payment?.status === "settlement")) {
+        bodyPayload.cancelReason = "kesalahan_toko";
+      }
+
+      const res = await apiFetch<{ message: string; order: Order }>(
+        `/api/admin/orders/${order.id}/status`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(bodyPayload),
+        }
+      );
       toast.success("Pesanan dibatalkan", {
         description: `Stok varian telah dikembalikan secara otomatis.`,
       });
+      await reloadOrder();
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : "Gagal membatalkan pesanan";
@@ -386,6 +476,210 @@ function OrderDetail({
             </AlertDialogContent>
           </AlertDialog>
         </div>
+      )}
+
+      {/* ── Section: Pembatalan & Pengembalian Dana (untuk pesanan online/Midtrans berbayar) ── */}
+      {(order.refund?.paid || (order.paymentMethod === "midtrans" && order.payment?.status === "settlement") || order.refundStatus === "menunggu" || order.refundStatus === "selesai") && (
+        <Card className="mb-4 border-primary/20 bg-card">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="flex items-center gap-2 font-display text-base font-bold">
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Wallet className="h-4 w-4" />
+                </span>
+                Pembatalan & Pengembalian Dana (Refund)
+              </CardTitle>
+              {order.refundStatus === "menunggu" && (
+                <Badge variant="destructive" className="w-fit gap-1 text-xs font-semibold">
+                  <AlertCircle className="h-3 w-3" />
+                  Menunggu Refund Manual
+                </Badge>
+              )}
+              {order.refundStatus === "selesai" && (
+                <Badge variant="secondary" className="w-fit gap-1 border-accent/40 bg-accent/10 text-xs font-semibold text-accent">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Refund Selesai
+                </Badge>
+              )}
+            </div>
+            <CardDescription>
+              Pesanan online yang telah dibayar pembeli. Pengembalian dana dilakukan manual oleh admin melalui Midtrans/Transfer bank.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Informasi Batas Waktu & Status */}
+            <div className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/20 p-3 sm:grid-cols-3 text-xs">
+              <div>
+                <p className="text-muted-foreground">Status Pembayaran</p>
+                <p className="font-semibold text-foreground">
+                  {order.payment?.paidAt ? `Lunas (${formatDateTimeID(order.payment.paidAt)} WIB)` : "Terbayar Online"}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Batas Refund Pembeli</p>
+                <p className="font-semibold text-foreground">
+                  {order.refund?.eligibleUntil ? `${formatDateTimeID(order.refund.eligibleUntil)} WIB` : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Status Refund Saat Ini</p>
+                <p className="font-semibold text-foreground capitalize">
+                  {order.refundStatus ? order.refundStatus.replace("_", " ") : "Tidak Ada"}
+                  {order.refundedAt && ` (selesai ${formatDateID(order.refundedAt)})`}
+                </p>
+              </div>
+            </div>
+
+            {/* Pesan State Refund */}
+            {order.refund?.state === "dalam_batas_waktu" && (
+              <p className="text-xs text-muted-foreground">
+                Dapat dibatalkan atas permintaan pembeli sampai{" "}
+                <strong className="text-foreground">{formatDateTimeID(order.refund.eligibleUntil || "")} WIB</strong>.
+              </p>
+            )}
+            {order.refund?.state === "lewat_batas_waktu" && (
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">
+                Batas refund permintaan pembeli sudah lewat. Tombol permintaan pembeli dinonaktifkan.
+              </div>
+            )}
+            {order.refund?.state === "lewat_batas_pengambilan" && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
+                Pesanan telah melewati batas waktu pengambilan di toko.
+              </div>
+            )}
+            {order.refundStatus === "menunggu" && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive font-medium">
+                Pesanan ini sedang menunggu pengembalian dana manual ke pembeli. Silakan kembalikan dana secara manual, lalu tekan tombol &ldquo;Tandai Sudah Refund&rdquo; di bawah.
+              </div>
+            )}
+            {order.refundStatus === "selesai" && (
+              <div className="rounded-md border border-accent/30 bg-accent/10 p-3 text-xs text-accent font-medium">
+                Refund telah selesai ditandai pada {order.refundedAt ? formatDateTimeID(order.refundedAt) : "sebelumnya"}. Dana telah dikembalikan ke pembeli.
+              </div>
+            )}
+
+            {/* Aksi Pembatalan & Tandai Refund */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border">
+              {/* Tombol Batal Permintaan Pembeli */}
+              {order.status !== "dibatalkan" && order.status !== "selesai" && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!(order.refund?.canCancelByBuyerRequest ?? (order.refund?.state === "dalam_batas_waktu")) || cancellingWithReason}
+                      className="gap-1.5 text-xs"
+                    >
+                      {cancellingWithReason ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5" />}
+                      Batalkan (Permintaan Pembeli)
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-display">
+                        Batalkan pesanan atas permintaan pembeli?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-2 text-xs">
+                        <span className="block text-foreground font-medium">
+                          Pembatalan tidak mengembalikan dana otomatis. Lakukan refund manual lalu tandai sudah refund.
+                        </span>
+                        <span className="block text-muted-foreground">
+                          Status order akan diubah menjadi &ldquo;Dibatalkan&rdquo; dan status refund menjadi &ldquo;Menunggu&rdquo;.
+                        </span>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleCancelWithReason("permintaan_pembeli")}
+                        className="bg-destructive text-white hover:bg-destructive/90"
+                      >
+                        Ya, Batalkan
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+
+              {/* Tombol Batal Kesalahan Toko */}
+              {order.status !== "dibatalkan" && order.status !== "selesai" && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!(order.refund?.canCancelByStoreFault ?? true) || cancellingWithReason}
+                      className="gap-1.5 text-xs text-destructive hover:bg-destructive/10"
+                    >
+                      {cancellingWithReason ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5" />}
+                      Batalkan (Kesalahan Toko)
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-display">
+                        Batalkan pesanan karena kesalahan toko?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-2 text-xs">
+                        <span className="block text-foreground font-medium">
+                          Pembatalan tidak mengembalikan dana otomatis. Lakukan refund manual lalu tandai sudah refund.
+                        </span>
+                        <span className="block text-muted-foreground">
+                          Gunakan opsi ini jika stok barang rusak, keliru, atau kendala operasional toko.
+                        </span>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleCancelWithReason("kesalahan_toko")}
+                        className="bg-destructive text-white hover:bg-destructive/90"
+                      >
+                        Ya, Batalkan
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+
+              {/* Tombol Tandai Sudah Refund */}
+              {(order.refundStatus === "menunggu" || (order.refund?.canMarkRefunded ?? false)) && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={markingRefunded}
+                      className="gap-1.5 text-xs bg-primary font-semibold"
+                    >
+                      {markingRefunded ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                      Tandai Sudah Refund
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-display">
+                        Tandai refund telah selesai?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="text-xs">
+                        Tekan hanya setelah uang benar-benar dikembalikan. Pembeli akan menerima notifikasi bahwa dana telah dikembalikan.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleMarkRefunded}
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        Ya, Sudah Ditransfer
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Detail grid */}

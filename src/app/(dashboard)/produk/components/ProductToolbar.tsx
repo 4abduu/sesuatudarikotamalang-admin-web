@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Category } from "@/lib/types";
+import { Category, Artisan } from "@/lib/types";
 
 interface ProductToolbarProps {
   search: string;
@@ -16,6 +16,9 @@ interface ProductToolbarProps {
   categoryId: string;
   onCategoryChange: (value: string) => void;
   categories: Category[];
+  artisanId: string;
+  onArtisanChange: (value: string) => void;
+  artisans: Artisan[];
   totalFiltered: number;
 }
 
@@ -25,6 +28,9 @@ export function ProductToolbar({
   categoryId,
   onCategoryChange,
   categories,
+  artisanId,
+  onArtisanChange,
+  artisans,
   totalFiltered,
 }: ProductToolbarProps) {
   return (
@@ -35,12 +41,12 @@ export function ProductToolbar({
           <Input
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Cari produk atau deskripsi singkat…"
+            placeholder="Cari produk atau penjual…"
             className="pl-9"
           />
         </div>
         <Select value={categoryId} onValueChange={onCategoryChange}>
-          <SelectTrigger className="w-full sm:w-56">
+          <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="Semua kategori" />
           </SelectTrigger>
           <SelectContent>
@@ -48,6 +54,19 @@ export function ProductToolbar({
             {categories.map((c) => (
               <SelectItem key={c.id} value={String(c.id)}>
                 {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={artisanId} onValueChange={onArtisanChange}>
+          <SelectTrigger className="w-full sm:w-52">
+            <SelectValue placeholder="Semua penjual" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Penjual</SelectItem>
+            {artisans.map((a) => (
+              <SelectItem key={a.id} value={String(a.id)}>
+                {a.isOfficial ? `★ ${a.brandName} (Official)` : a.brandName}
               </SelectItem>
             ))}
           </SelectContent>

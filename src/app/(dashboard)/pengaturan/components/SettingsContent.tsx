@@ -18,9 +18,10 @@ export function SettingsContent() {
   const [error, setError] = useState<string | null>(null);
 
   // Form states
-  const [holdMinutes, setHoldMinutes] = useState(120);
+  const [holdMinutes, setHoldMinutes] = useState(1440);
   const [autoCancel, setAutoCancel] = useState(true);
   const [deadlineDays, setDeadlineDays] = useState(14);
+  const [refundWindowDays, setRefundWindowDays] = useState(3);
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [notificationEmail, setNotificationEmail] = useState("");
 
@@ -31,9 +32,10 @@ export function SettingsContent() {
       const res = await apiFetch<{ settings: AppSettings }>("/api/admin/settings");
       if (res.settings) {
         setSettings(res.settings);
-        setHoldMinutes(res.settings.holdDurationMinutes || 120);
+        setHoldMinutes(res.settings.holdDurationMinutes || 1440);
         setAutoCancel(res.settings.autoCancelEnabled ?? true);
         setDeadlineDays(res.settings.pickupDeadlineDays || 14);
+        setRefundWindowDays(Number(res.settings.refundWindowDays) || 3);
         setWhatsappNumber(res.settings.whatsappAdminNumber || "");
         setNotificationEmail(res.settings.notificationEmail || "");
       }
@@ -63,6 +65,10 @@ export function SettingsContent() {
       toast.error("Batas pengambilan harus 7, 14, atau 30 hari");
       return;
     }
+    if (![1, 3, 7].includes(refundWindowDays)) {
+      toast.error("Batas waktu refund harus 1, 3, atau 7 hari");
+      return;
+    }
     if (whatsappNumber && !/^\+?\d+$/.test(whatsappNumber)) {
       toast.error("Nomor WhatsApp hanya boleh berupa angka (boleh diawali tanda +)");
       return;
@@ -71,9 +77,10 @@ export function SettingsContent() {
     setSaving(true);
     try {
       const payload = {
-        holdDurationMinutes: holdMinutes,
-        autoCancelEnabled: autoCancel,
-        pickupDeadlineDays: deadlineDays,
+        holdDurationMinutes: Number(holdMinutes),
+        autoCancelEnabled: Boolean(autoCancel),
+        pickupDeadlineDays: Number(deadlineDays),
+        refundWindowDays: Number(refundWindowDays),
         whatsappAdminNumber: whatsappNumber.trim(),
         notificationEmail: notificationEmail.trim(),
       };
@@ -136,6 +143,8 @@ export function SettingsContent() {
         onHoldMinutesChange={setHoldMinutes}
         autoCancel={autoCancel}
         onAutoCancelChange={setAutoCancel}
+        refundWindowDays={refundWindowDays}
+        onRefundWindowDaysChange={setRefundWindowDays}
         onSave={saveAllSettings}
         loading={saving}
       />

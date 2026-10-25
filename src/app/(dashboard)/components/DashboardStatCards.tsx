@@ -1,4 +1,4 @@
-import { ShoppingCart, Clock, UserPlus, AlertTriangle } from "lucide-react";
+import { ShoppingCart, Clock, UserPlus, AlertTriangle, Wallet } from "lucide-react";
 import { StatCard } from "@/app/(dashboard)/components/admin-ui";
 
 interface DashboardStatCardsProps {
@@ -6,6 +6,7 @@ interface DashboardStatCardsProps {
   readyForPickup: number;
   pendingApplications: number;
   lowStockCount: number;
+  pendingRefundCount?: number;
 }
 
 export function DashboardStatCards({
@@ -13,9 +14,10 @@ export function DashboardStatCards({
   readyForPickup,
   pendingApplications,
   lowStockCount,
+  pendingRefundCount = 0,
 }: DashboardStatCardsProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
       <StatCard
         label="Pesanan Hari Ini"
         value={ordersToday}
@@ -31,17 +33,24 @@ export function DashboardStatCards({
         accent="mustard"
       />
       <StatCard
-        label="Pengajuan Konsinyasi Baru"
+        label="Pengajuan Baru"
         value={pendingApplications}
         hint="Perlu ditinjau"
         icon={UserPlus}
         accent="accent"
       />
       <StatCard
-        label="Produk Stok Menipis"
+        label="Stok Menipis"
         value={lowStockCount}
         hint="Varian dengan stok < 6"
         icon={AlertTriangle}
+        accent="brown"
+      />
+      <StatCard
+        label="Perlu Refund"
+        value={pendingRefundCount}
+        hint="Menunggu transfer manual"
+        icon={Wallet}
         accent="brown"
       />
     </div>

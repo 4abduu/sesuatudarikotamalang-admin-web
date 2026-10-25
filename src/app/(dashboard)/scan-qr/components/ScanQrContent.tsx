@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Order } from "@/lib/types";
@@ -10,35 +10,40 @@ import { ScanResultCard, ScanConfirmedCard } from "./ScanResultCard";
 
 type ScanFlowState = "idle" | "preview" | "confirmed";
 
+// QR berisi teks polos nomor pesanan, mis. "SDK-1234" (4 sampai 6 digit).
+const ORDER_NUMBER_PATTERN = /^SDK-\d{4,6}$/;
+
+// Memangkas spasi/baris baru lalu menolak semua pola lain sebelum memanggil API.
+const extractOrderNumber = (rawText: string): string | null => {
+  const candidate = rawText.trim().toUpperCase();
+  return ORDER_NUMBER_PATTERN.test(candidate) ? candidate : null;
+};
+
 export function ScanQrContent() {
   const [state, setState] = useState<ScanFlowState>("idle");
   const [matchedOrder, setMatchedOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
-
-  // Parse pattern SDK-XXXX dari teks QR
-  const extractOrderNumber = (rawText: string): string | null => {
-    const trimmed = rawText.trim();
-    const match = trimmed.match(/SDK-\d{4,6}/i);
-    return match ? match[0].toUpperCase() : null;
-  };
+  // Kamera pernah diaktifkan oleh admin: setelah "Scan lagi" dinyalakan otomatis.
+  const [cameraWanted, setCameraWanted] = useState(false);
+  // Penjaga request: hanya satu request aktif walau QR yang sama terbaca berulang.
+  const inFlightRef = useRef(false);
 
   // Mencari dan memvalidasi order sebelum diserahkan
   const handleVerifyOrder = async (rawCode: string) => {
+    if (inFlightRef.current) return;
     const orderNumber = extractOrderNumber(rawCode);
     if (!orderNumber) {
-      toast.error("Format QR tidak dikenali (harus memuat SDK-XXXX)");
+      toast.error("Format QR tidak dikenali. Nomor pesanan harus seperti SDK-1234.");
       return;
     }
 
+    inFlightRef.current = true;
     setLoading(true);
     try {
-      // Ambil detail order dari backend
       const res = await apiFetch<{ orders: Order[] }>(
         `/api/admin/orders?search=${encodeURIComponent(orderNumber)}`
       );
-      const found = res.orders?.find(
-        (o) => o.orderNumber.toUpperCase() === orderNumber
-      );
+      const found = res.orders?.find((o) => o.orderNumber.toUpperCase() === orderNumber);
 
       if (!found) {
         toast.error(`Pesanan ${orderNumber} tidak ditemukan di database.`);
@@ -55,32 +60,38 @@ export function ScanQrContent() {
         toast.error("Gagal memeriksa nomor pesanan");
       }
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   };
 
   // Konfirmasi pengambilan (POST /api/admin/scan-qr/verify)
   const handleConfirmPickup = async () => {
-    if (!matchedOrder) return;
+    if (!matchedOrder || inFlightRef.current) return;
+    inFlightRef.current = true;
     setLoading(true);
     try {
-      const res = await apiFetch<{ message: string; order: Order }>(
-        "/api/admin/scan-qr/verify",
-        {
-          method: "POST",
-          body: JSON.stringify({ orderNumber: matchedOrder.orderNumber }),
-        }
-      );
+      const res = await apiFetch<{ message: string; order: Order }>("/api/admin/scan-qr/verify", {
+        method: "POST",
+        body: JSON.stringify({ orderNumber: matchedOrder.orderNumber }),
+      });
       setMatchedOrder(res.order || matchedOrder);
       setState("confirmed");
       toast.success(res.message || "Pesanan telah ditandai Selesai");
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.message);
+        // Backend membalas 400 dengan objek order (mis. belum lunas/sudah selesai):
+        // tampilkan status order itu supaya admin tahu penyebabnya.
+        const data = err.data as { order?: Order } | undefined;
+        if (err.status === 400 && data?.order) {
+          setMatchedOrder(data.order);
+        }
       } else {
         toast.error("Gagal memverifikasi pengambilan");
       }
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   };
@@ -96,16 +107,16 @@ export function ScanQrContent() {
         <ScanConfirmedCard order={matchedOrder} onScanAgain={handleReset} />
       ) : (
         <div className="mx-auto max-w-md">
-          {/* Kamera Pemindai */}
+          {/* Kamera Pemindai. Tidak ikut di-remount saat pindah idle <-> preview. */}
           <CameraScanner
             onScan={handleVerifyOrder}
             disabled={state === "preview" || loading}
+            autoStart={cameraWanted}
+            onActiveChange={setCameraWanted}
           />
 
-          {/* Input Manual Cadangan */}
-          {state !== "preview" && (
-            <ManualOrderInput onSearch={handleVerifyOrder} loading={loading} />
-          )}
+          {/* Input manual selalu tersedia sebagai cadangan (izin ditolak, tanpa HTTPS, kamera hitam, decoder gagal) */}
+          {state !== "preview" && <ManualOrderInput onSearch={handleVerifyOrder} loading={loading} />}
 
           {/* Kartu Pratinjau Order & Tombol Konfirmasi Selesai */}
           {state === "preview" && matchedOrder && (

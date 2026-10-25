@@ -96,11 +96,18 @@ export function CreatorListTab({ artisans, onStatusUpdated }: CreatorListTabProp
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h3 className="truncate font-display text-base font-bold text-foreground">
-                        {c.brandName}
-                      </h3>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="truncate font-display text-base font-bold text-foreground">
+                          {c.brandName}
+                        </h3>
+                        {c.isOfficial && (
+                          <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[10px] font-semibold text-primary">
+                            Official Store
+                          </Badge>
+                        )}
+                      </div>
                       <p className="truncate text-xs text-muted-foreground">
-                        {c.user?.email || (c.bio ? c.bio.substring(0, 30) + "…" : "Kreator Malang")}
+                        {c.isOfficial ? "Toko Resmi Sesuatu DariKota Malang" : c.user?.email || (c.bio ? c.bio.substring(0, 30) + "…" : "Kreator Malang")}
                       </p>
                     </div>
                     {isInactive && (
@@ -129,36 +136,43 @@ export function CreatorListTab({ artisans, onStatusUpdated }: CreatorListTabProp
                       Lihat produk
                     </Link>
 
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={isToggling}
-                          className={cn(
-                            "h-8 gap-1.5 text-xs",
-                            isInactive
-                              ? "text-accent hover:bg-accent/10"
-                              : "text-destructive hover:bg-destructive/10"
-                          )}
-                        >
-                          {isToggling ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : isInactive ? (
-                            <Power className="h-3.5 w-3.5" />
-                          ) : (
-                            <PowerOff className="h-3.5 w-3.5" />
-                          )}
-                          {isInactive ? "Aktifkan" : "Nonaktifkan"}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            {isInactive
-                              ? `Aktifkan kreator "${c.brandName}"?`
-                              : `Nonaktifkan kreator "${c.brandName}"?`}
+                    {c.isOfficial && (
+                      <span className="text-[11px] font-medium text-muted-foreground italic">
+                        Toko Resmi (Permanen Aktif)
+                      </span>
+                    )}
+
+                    {!c.isOfficial && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={isToggling}
+                            className={cn(
+                              "h-8 gap-1.5 text-xs",
+                              isInactive
+                                ? "text-accent hover:bg-accent/10"
+                                : "text-destructive hover:bg-destructive/10"
+                            )}
+                          >
+                            {isToggling ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : isInactive ? (
+                              <Power className="h-3.5 w-3.5" />
+                            ) : (
+                              <PowerOff className="h-3.5 w-3.5" />
+                            )}
+                            {isInactive ? "Aktifkan" : "Nonaktifkan"}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              {isInactive
+                                ? `Aktifkan kreator "${c.brandName}"?`
+                                : `Nonaktifkan kreator "${c.brandName}"?`}
                           </AlertDialogTitle>
                           <AlertDialogDescription>
                             {isInactive
@@ -176,7 +190,8 @@ export function CreatorListTab({ artisans, onStatusUpdated }: CreatorListTabProp
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
-                    </AlertDialog>
+                      </AlertDialog>
+                    )}
                   </div>
                 </div>
               </div>

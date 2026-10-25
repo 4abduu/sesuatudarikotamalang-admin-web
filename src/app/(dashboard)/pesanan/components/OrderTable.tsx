@@ -66,9 +66,9 @@ export function OrderTable({ orders }: OrderTableProps) {
             {orders.map((o) => {
               const firstItem = o.items?.[0];
               const remainingCount = (o.items?.length || 0) - 1;
-              const isLateSettlement =
-                (o.status === "kedaluwarsa" || o.status === "dibatalkan") &&
-                o.payment?.status === "settlement";
+              const sellerName = firstItem?.product?.artisan?.brandName;
+              const isOfficial = firstItem?.product?.artisan?.isOfficial;
+              const needsRefund = o.refundStatus === "menunggu" || ((o.status === "kedaluwarsa" || o.status === "dibatalkan") && o.payment?.status === "settlement");
 
               return (
                 <TableRow key={o.id} className="hover:bg-muted/30">
@@ -81,14 +81,25 @@ export function OrderTable({ orders }: OrderTableProps) {
                     {o.user?.name ?? "Pelanggan"}
                   </TableCell>
                   <TableCell className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="text-sm text-foreground">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm text-foreground font-medium">
                         {firstItem?.product?.name || "Produk"}
                         {remainingCount > 0 ? ` (+${remainingCount} lainnya)` : ""}
                       </span>
-                      <span className="text-xs text-muted-foreground">
-                        {(firstItem?.variant?.combination || []).join(" / ") || "Varian default"}
-                      </span>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span>{(firstItem?.variant?.combination || []).join(" / ") || "Default"}</span>
+                        {sellerName && (
+                          <>
+                            <span>·</span>
+                            <span className="font-medium text-foreground">{sellerName}</span>
+                            {isOfficial && (
+                              <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[9px] px-1 py-0 text-primary">
+                                Official
+                              </Badge>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="px-4 py-3">
@@ -100,14 +111,19 @@ export function OrderTable({ orders }: OrderTableProps) {
                     </span>
                   </TableCell>
                   <TableCell className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 items-start">
                       <span className="text-xs font-medium uppercase text-foreground">
                         {o.paymentMethod === "cod" ? "Cash/QRIS" : "Midtrans"}
                       </span>
-                      {isLateSettlement && (
+                      {needsRefund && (
                         <Badge variant="destructive" className="h-5 px-1.5 text-[10px] gap-1">
                           <AlertCircle className="h-3 w-3" />
                           Perlu Refund
+                        </Badge>
+                      )}
+                      {o.refundStatus === "selesai" && (
+                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] text-accent border-accent/30 bg-accent/10">
+                          Refund Selesai
                         </Badge>
                       )}
                     </div>
@@ -143,9 +159,9 @@ export function OrderTable({ orders }: OrderTableProps) {
         {orders.map((o) => {
           const firstItem = o.items?.[0];
           const remainingCount = (o.items?.length || 0) - 1;
-          const isLateSettlement =
-            (o.status === "kedaluwarsa" || o.status === "dibatalkan") &&
-            o.payment?.status === "settlement";
+          const sellerName = firstItem?.product?.artisan?.brandName;
+          const isOfficial = firstItem?.product?.artisan?.isOfficial;
+          const needsRefund = o.refundStatus === "menunggu" || ((o.status === "kedaluwarsa" || o.status === "dibatalkan") && o.payment?.status === "settlement");
 
           return (
             <Card key={o.id} className="gap-3 py-4">
@@ -159,7 +175,15 @@ export function OrderTable({ orders }: OrderTableProps) {
                       {o.user?.name ?? "Pelanggan"}
                     </p>
                   </div>
-                  <OrderStatusBadge status={o.status} />
+                  <div className="flex flex-col items-end gap-1">
+                    <OrderStatusBadge status={o.status} />
+                    {needsRefund && (
+                      <Badge variant="destructive" className="h-5 px-1.5 text-[9px] gap-1">
+                        <AlertCircle className="h-2.5 w-2.5" />
+                        Perlu Refund
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 border-t border-border pt-3">
@@ -167,13 +191,23 @@ export function OrderTable({ orders }: OrderTableProps) {
                     <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                       Produk
                     </p>
-                    <p className="text-sm text-foreground">
+                    <p className="text-sm text-foreground font-medium">
                       {firstItem?.product?.name || "Produk"}
                       {remainingCount > 0 ? ` (+${remainingCount})` : ""}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {(firstItem?.variant?.combination || []).join(" / ") || "Varian default"}
                     </p>
+                    {sellerName && (
+                      <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <span>{sellerName}</span>
+                        {isOfficial && (
+                          <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[9px] px-1 py-0 text-primary">
+                            Official
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -185,9 +219,9 @@ export function OrderTable({ orders }: OrderTableProps) {
                     <p className="text-xs text-muted-foreground">
                       {o.pickupSlot} · {o.paymentMethod === "cod" ? "Cash/QRIS" : "Midtrans"}
                     </p>
-                    {isLateSettlement && (
-                      <p className="mt-1 text-[11px] font-bold text-destructive">
-                        Perlu Refund Manual
+                    {o.refundStatus === "selesai" && (
+                      <p className="mt-1 text-[11px] font-semibold text-accent">
+                        Refund Selesai
                       </p>
                     )}
                   </div>

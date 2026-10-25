@@ -16,6 +16,8 @@ interface ReservationSettingsCardProps {
   onHoldMinutesChange: (val: number) => void;
   autoCancel: boolean;
   onAutoCancelChange: (val: boolean) => void;
+  refundWindowDays: number;
+  onRefundWindowDaysChange: (val: number) => void;
   onSave: () => void;
   loading: boolean;
 }
@@ -25,6 +27,8 @@ export function ReservationSettingsCard({
   onHoldMinutesChange,
   autoCancel,
   onAutoCancelChange,
+  refundWindowDays,
+  onRefundWindowDaysChange,
   onSave,
   loading,
 }: ReservationSettingsCardProps) {
@@ -38,7 +42,7 @@ export function ReservationSettingsCard({
           Reservasi & Stok (Bayar di Toko)
         </CardTitle>
         <CardDescription>
-          Atur durasi penahanan stok dan pembatalan otomatis untuk pesanan &ldquo;Bayar di Toko&rdquo; (COD).
+          Atur durasi penahanan stok dan pembatalan otomatis untuk pesanan &ldquo;Bayar di Toko&rdquo; (COD), serta batas waktu pengajuan refund online.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -55,7 +59,29 @@ export function ReservationSettingsCard({
             disabled={loading}
           />
           <p className="text-xs text-muted-foreground">
-            Batas waktu penahanan stok sebelum pesanan kedaluwarsa (15 – 1440 menit / default 120 menit).
+            Batas waktu penahanan stok sebelum pesanan kedaluwarsa (15 – 1440 menit / default 1440 menit atau 1 hari).
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="refund-window">Batas Waktu Refund Pembeli (hari)</Label>
+          <div className="flex flex-wrap gap-2">
+            {[1, 3, 7].map((days) => (
+              <Button
+                key={days}
+                type="button"
+                variant={refundWindowDays === days ? "default" : "outline"}
+                size="sm"
+                onClick={() => onRefundWindowDaysChange(days)}
+                disabled={loading}
+                className="h-9 px-4 text-xs font-semibold"
+              >
+                {days} Hari {days === 3 && "(Default)"}
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Pembeli yang sudah membayar dapat meminta pembatalan sampai batas ini, atau sampai jadwal pengambilan bila lebih awal.
           </p>
         </div>
 
