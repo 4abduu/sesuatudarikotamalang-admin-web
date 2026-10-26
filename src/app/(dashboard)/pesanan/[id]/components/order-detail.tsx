@@ -114,9 +114,7 @@ export function OrderDetailContent({ orderId }: { orderId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch<{ order: Order }>(
-        `/api/admin/orders/${orderId}`
-      );
+      const res = await apiFetch<{ order: Order }>(`/api/orders/${orderId}`);
       setOrder(res.order);
     } catch (err) {
       if (err instanceof ApiError) {

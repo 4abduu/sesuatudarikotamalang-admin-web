@@ -42,9 +42,10 @@ export async function apiFetch<T = unknown>(
 
   if (!res.ok) {
     const msg =
-      res.status >= 500
+      data.error ||
+      (res.status >= 500
         ? "Terjadi kesalahan pada server"
-        : data.error || "Request gagal";
+        : "Request gagal");
     throw new ApiError(res.status, msg, data.code, data);
   }
 

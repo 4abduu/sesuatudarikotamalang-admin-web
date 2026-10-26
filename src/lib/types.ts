@@ -274,3 +274,51 @@ export interface DashboardData {
   pendingRefundCount?: number;
   pendingRefunds?: PendingRefundItem[];
 }
+
+export type SlotUsage = {
+  /** Jumlah pesanan (status apa pun) yang pernah memakai jam ini. > 0 berarti jam terkunci dan tidak bisa dihapus. */
+  totalOrders: number;
+  /** Pesanan aktif (menunggu_bayar atau lunas) dengan tanggal pickup hari ini atau ke depan. */
+  upcomingActiveOrders: number;
+};
+
+export type PickupSlot = {
+  /** null bila nilai berasal dari cadangan (tabel slot di database masih kosong). */
+  id: string | null;
+  time: string; // "HH:MM"
+  capacity: number;
+  isActive: boolean;
+  usage: SlotUsage;
+};
+
+export type PickupSettings = {
+  openTime: string; // "HH:MM"
+  closeTime: string; // "HH:MM"
+  leadMinutes: number;
+};
+
+export type PickupLimits = {
+  stepMinutes: number;
+  maxActiveSlots: number;
+  minCapacity: number;
+  maxCapacity: number;
+  maxLeadMinutes: number;
+};
+
+export type PickupSchedule = {
+  source: "database" | "fallback";
+  settings: PickupSettings;
+  limits: PickupLimits;
+  slots: PickupSlot[];
+};
+
+export type ImpactType = "DEACTIVATE" | "CAPACITY_BELOW_BOOKED" | "DELETE";
+
+/** Isi `impact` pada respons 409 CONFIRMATION_REQUIRED. */
+export type ImpactInfo = {
+  type: ImpactType;
+  upcomingActiveOrders: number;
+  dates: { date: string; booked: number }[]; // maksimal 10 tanggal
+  newCapacity?: number;
+  lastActiveSlot: boolean;
+};
