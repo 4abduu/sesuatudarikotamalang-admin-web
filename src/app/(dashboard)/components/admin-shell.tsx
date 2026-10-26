@@ -11,9 +11,9 @@ import {
   Users,
   Star,
   Settings,
+  Clock,
   LogOut,
   Menu,
-  Store,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useUserAuth } from "@/lib/user-auth";
@@ -27,6 +27,7 @@ const navItems = [
   { href: "/scan-qr", label: "Scan QR", Icon: QrCode },
   { href: "/kreator", label: "Kreator", Icon: Users },
   { href: "/ulasan", label: "Ulasan", Icon: Star },
+  { href: "/jadwal-pickup", label: "Jadwal Pickup", Icon: Clock },
   { href: "/pengaturan", label: "Pengaturan", Icon: Settings },
 ];
 

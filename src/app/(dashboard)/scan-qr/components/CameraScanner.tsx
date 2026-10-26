@@ -304,7 +304,6 @@ export function CameraScanner({
       {isScanning && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
           <Button type="button" size="sm" variant="secondary" className="gap-1.5" onClick={() => stopCamera()}>
-            <Square className="h-3.5 w-3.5" />
             Matikan Kamera
           </Button>
         </div>

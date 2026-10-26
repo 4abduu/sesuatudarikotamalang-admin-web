@@ -552,9 +552,12 @@ export function ProductFormFields({
               onApplyDraft={(draft) => {
                 setStoryTitle(draft.title);
                 setStoryBody(draft.body);
+                if (draft.process.trim()) setStoryProcess(draft.process);
               }}
               hasExistingContent={
-                storyTitle.trim().length > 0 || storyBody.trim().length > 0
+                storyTitle.trim().length > 0 ||
+                storyBody.trim().length > 0 ||
+                storyProcess.trim().length > 0
               }
             />
 
@@ -695,6 +698,7 @@ function PhotoDropzone({
 type StoryAiDraft = {
   title: string;
   body: string;
+  process: string;
 };
 
 type StoryAiState = "idle" | "loading" | "result" | "error";
@@ -777,7 +781,8 @@ function StoryAiDialog({
     (p) => p.length > 0 && p.length <= 300
   );
   const totalChars = validPoints.reduce((sum, p) => sum + p.length, 0);
-  const canGenerate = validPoints.length > 0 && totalChars >= 30;
+  const basisChars = motif.trim().length + inspiration.trim().length;
+  const canGenerate = validPoints.length > 0 && totalChars >= 30 && basisChars >= 15;
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -797,7 +802,7 @@ function StoryAiDialog({
 
     try {
       const res = await apiFetch<{
-        draft: { judul: string; isi: string };
+        draft: { judul: string; isi: string; proses?: string };
         meta?: { aiGenerated: boolean };
       }>("/api/ai/story-draft", {
         method: "POST",
@@ -814,6 +819,7 @@ function StoryAiDialog({
         setDraft({
           title: res.draft.judul,
           body: res.draft.isi,
+          process: (res.draft.proses ?? "").trim(),
         });
         setAiState("result");
       } else {
@@ -838,7 +844,7 @@ function StoryAiDialog({
     if (!draft) return;
     if (hasExistingContent) {
       const ok = window.confirm(
-        "Isi cerita saat ini akan diganti dengan draft AI. Lanjut?"
+        "Judul, isi cerita, dan proses (bila ada) akan diganti dengan draft AI. Lanjut?"
       );
       if (!ok) return;
     }
@@ -865,6 +871,9 @@ function StoryAiDialog({
         {/* === State: idle === */}
         {aiState === "idle" && (
           <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Boleh dikosongkan. Cukup isi Motif atau Inspirasi; Proses hanya diisi bila ingin AI ikut menuliskannya.
+            </p>
             <StoryAiPointField
               label="Motif / objek yang digambar"
               placeholder="Contoh: Singa dengan latar arsitektur heritage Kayutangan"
@@ -872,20 +881,22 @@ function StoryAiDialog({
               onChange={setMotif}
             />
             <StoryAiPointField
-              label="Proses pembuatan"
+              label="Proses pembuatan (opsional)"
               placeholder="Contoh: Sketsa tangan manual lalu didigitalkan dan dicetak di kertas bertekstur"
               value={process}
               onChange={setProcess}
             />
             <StoryAiPointField
-              label="Inspirasi di baliknya"
+              label="Inspirasi di baliknya (opsional)"
               placeholder="Contoh: Suasana sore jalan Basuki Rahmat di kala lampu jalan mulai menyala"
               value={inspiration}
               onChange={setInspiration}
             />
             {!canGenerate && (
               <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                Isi minimal satu poin singkat dengan total minimal 30 karakter ya (saat ini: {totalChars}/30).
+                {totalChars < 30
+                  ? `Isi minimal satu poin singkat dengan total minimal 30 karakter ya (saat ini: ${totalChars}/30).`
+                  : "Isi Motif atau Inspirasi sebagai dasar cerita. Proses saja belum cukup."}
               </p>
             )}
             <Button
@@ -946,6 +957,16 @@ function StoryAiDialog({
                 {draft.body}
               </div>
             </div>
+            {draft.process && (
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Proses Pembuatan
+                </Label>
+                <div className="max-h-40 overflow-y-auto scroll-soft rounded-lg border border-border bg-muted/40 p-3 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+                  {draft.process}
+                </div>
+              </div>
+            )}
             <Button
               type="button"
               onClick={handleUseDraft}
