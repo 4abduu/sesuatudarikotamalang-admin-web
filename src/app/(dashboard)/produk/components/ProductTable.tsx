@@ -109,11 +109,7 @@ export function ProductTable({
                       {isLow && <AlertTriangle className="h-3.5 w-3.5" />}
                       {totalStock}
                     </span>
-                    {isLow && (
-                      <p className="text-[11px] text-muted-foreground">
-                        varian menipis: {lowVariants.map((v) => `${(v.combination || []).join(" / ") || "Default"} (${v.stock})`).join(", ")}
-                      </p>
-                    )}
+                    
                   </TableCell>
                   <TableCell>
                     <Button
@@ -244,7 +240,7 @@ export function ProductTable({
                     )}
                   >
                     {totalStock}
-                    {isLow && " (varian menipis)"}
+                    
                   </p>
                 </div>
               </div>

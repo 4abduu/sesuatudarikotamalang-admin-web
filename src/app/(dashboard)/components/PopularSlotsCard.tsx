@@ -33,7 +33,7 @@ export function PopularSlotsCard({ slotDistribution }: PopularSlotsCardProps) {
           Jumlah pesanan per slot (hari ini).
         </p>
       </CardHeader>
-      <CardContent className="space-y-3 max-h-[380px] overflow-y-auto scroll-soft pr-1">
+      <CardContent className="space-y-3 max-h-[380px] overflow-y-auto scroll-soft pr-3">
         {slotList.map((s) => (
           <div key={s.slot} className="flex items-center gap-3">
             <span className="w-12 shrink-0 text-xs font-semibold text-foreground">
@@ -45,7 +45,7 @@ export function PopularSlotsCard({ slotDistribution }: PopularSlotsCardProps) {
                 style={{ width: `${(s.count / maxSlotCount) * 100}%` }}
               />
             </div>
-            <span className="w-8 shrink-0 text-right text-xs font-semibold text-foreground">
+            <span className="w-8 shrink-0 text-right text-xs font-semibold text-foreground pr-1">
               {s.count}
             </span>
             {s.isFull && (
