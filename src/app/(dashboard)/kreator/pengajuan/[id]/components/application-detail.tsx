@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -11,9 +12,11 @@ import {
   Phone,
   Package,
   Clock,
-  ImageOff,
   Sparkles,
   Users,
+  Loader2,
+  AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppStatusBadge } from "@/app/(dashboard)/components/admin-ui";
@@ -22,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,62 +37,135 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArtImage } from "@/components/site/art-image";
-import { useUserAuth } from "@/lib/user-auth";
-import { useUserApplications } from "@/lib/user-applications";
-import { categories } from "@/data/categories";
-import type { Application, ApplicationStatus } from "@/data/admin/applications";
-
-const categoryByName: Record<string, string> = Object.fromEntries(
-  categories.map((c) => [c.name, c.id]),
-);
+import { apiFetch, ApiError } from "@/lib/api";
+import { ArtisanApplication } from "@/lib/types";
 
 function toWaLink(raw: string) {
   const digits = raw.replace(/[^\d]/g, "");
-  const normalized = digits.startsWith("0")
-    ? "62" + digits.slice(1)
-    : digits;
+  const normalized = digits.startsWith("0") ? "62" + digits.slice(1) : digits;
   return `https://wa.me/${normalized}`;
 }
 
-export function ApplicationDetail({ application }: { application: Application }) {
-  // Initialize local status from prop — no setState-in-effect needed (lint-clean).
-  const [status, setStatus] = useState<ApplicationStatus>(application.status);
+function formatDateID(iso: string) {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function ApplicationDetail({ applicationId }: { applicationId: string }) {
+  const router = useRouter();
+  const [application, setApplication] = useState<ArtisanApplication | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [processing, setProcessing] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [brandConflictError, setBrandConflictError] = useState<string | null>(null);
 
-  const categoryId = categoryByName[application.category];
+  const fetchApplication = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch<{ applications: ArtisanApplication[] }>("/api/admin/applications");
+      const found = res.applications.find((a) => String(a.id) === String(applicationId));
+      if (!found) {
+        setError("Pengajuan tidak ditemukan");
+      } else {
+        setApplication(found);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Gagal memuat data pengajuan");
+    } finally {
+      setLoading(false);
+    }
+  }, [applicationId]);
 
-  const handleAccept = () => {
-    // Derive a creatorId from the application (slug from brandName or applicantName).
-    // For user-submitted applications (from /daftar-kreator) the id will match
-    // the user applications store; for the admin's static seed applications
-    // (app1..app5) it won't — but the bridge calls below are harmless no-ops.
-    const creatorId = application.brandName
-      ? application.brandName
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "")
-      : `creator-${application.id}`;
-    // Bridge to the user session (works if admin & user share the browser —
-    // prototype only; in a real app the backend would sync).
-    useUserApplications.getState().approve(application.id); // no-op if not in user store
-    useUserAuth.getState().becomeCreator(creatorId);
-    setStatus("approved");
-    toast.success("Pengajuan diterima! Kreator dipindahkan ke list aktif.");
+  useEffect(() => {
+    fetchApplication();
+  }, [fetchApplication]);
+
+  const handleApprove = async () => {
+    if (!application || processing) return;
+    setProcessing(true);
+    setBrandConflictError(null);
+    try {
+      await apiFetch(`/api/admin/applications/${application.id}/approve`, {
+        method: "POST",
+      });
+      toast.success("Pengajuan disetujui. Pemohon kini berperan sebagai kreator.");
+      router.push("/kreator");
+    } catch (err) {
+      if (err instanceof ApiError && (err.code === "BRAND_NAME_TAKEN" || err.status === 409)) {
+        setBrandConflictError(
+          err.message || "Nama brand sudah dipakai kreator lain atau sedang diajukan. Gunakan nama lain."
+        );
+      } else {
+        toast.error(err instanceof ApiError ? err.message : "Gagal menyetujui pengajuan");
+      }
+    } finally {
+      setProcessing(false);
+    }
   };
 
-  const handleReject = () => {
-    // Bridge to user applications store (no-op if not in user store — prototype only).
-    useUserApplications.getState().reject(application.id, rejectReason || undefined);
-    setStatus("rejected");
-    setRejectDialogOpen(false);
-    toast(
-      rejectReason
-        ? `Pengajuan ditolak: ${rejectReason.slice(0, 60)}`
-        : "Pengajuan ditolak",
+  const handleReject = async () => {
+    if (!application || processing) return;
+    setProcessing(true);
+    try {
+      const trimmed = rejectReason.trim();
+      await apiFetch(`/api/admin/applications/${application.id}/reject`, {
+        method: "POST",
+        body: JSON.stringify(trimmed ? { reason: trimmed } : {}),
+      });
+      toast.success("Pengajuan ditolak.");
+      setRejectDialogOpen(false);
+      router.push("/kreator");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Gagal menolak pengajuan");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const openRejectWithConflictReason = () => {
+    setRejectReason("Nama brand sudah dipakai. Silakan ajukan ulang dengan nama brand lain.");
+    setRejectDialogOpen(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="grid min-h-[400px] place-items-center rounded-xl border border-border bg-card p-12">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm font-medium">Memuat data pengajuan…</p>
+        </div>
+      </div>
     );
-  };
+  }
+
+  if (error || !application) {
+    return (
+      <div className="grid min-h-[300px] place-items-center rounded-xl border border-destructive/30 bg-destructive/5 p-12 text-center">
+        <div className="flex flex-col items-center gap-4 max-w-md">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <div>
+            <h3 className="text-base font-bold text-foreground">Pengajuan Tidak Ditemukan</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{error ?? "Data tidak tersedia"}</p>
+          </div>
+          <Button asChild variant="outline">
+            <Link href="/kreator">Kembali ke Daftar Kreator</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const samplePhotos = application.samplePhotos ?? (application.sampleFileUrl ? [application.sampleFileUrl] : []);
 
   return (
     <div>
@@ -98,7 +175,7 @@ export function ApplicationDetail({ application }: { application: Application })
         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
-        Semua pengajuan
+        Kembali ke daftar pengajuan
       </Link>
 
       {/* Header */}
@@ -108,13 +185,13 @@ export function ApplicationDetail({ application }: { application: Application })
             <h1 className="font-display text-2xl font-bold text-foreground md:text-[28px]">
               {application.applicantName}
             </h1>
-            <AppStatusBadge status={status} />
+            <AppStatusBadge status={application.status} />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Brand: <span className="font-medium text-foreground">{application.brandName}</span>
             <span className="mx-2 text-border">·</span>
             <Clock className="mr-1 inline h-3.5 w-3.5" />
-            {application.submittedAt}
+            Diajukan: {formatDateID(application.submittedAt)}
           </p>
         </div>
       </div>
@@ -158,20 +235,22 @@ export function ApplicationDetail({ application }: { application: Application })
                   </p>
                 </div>
               </a>
-              <a
-                href={`mailto:${application.email}`}
-                className="flex items-start gap-3 rounded-lg border border-border bg-background/60 p-3 transition-colors hover:border-primary/40 hover:bg-secondary/40 sm:col-span-2"
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/15 text-primary">
-                  <Mail className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground">Email</p>
-                  <p className="truncate text-sm font-semibold text-foreground">
-                    {application.email}
-                  </p>
-                </div>
-              </a>
+              {application.user?.email && (
+                <a
+                  href={`mailto:${application.user.email}`}
+                  className="flex items-start gap-3 rounded-lg border border-border bg-background/60 p-3 transition-colors hover:border-primary/40 hover:bg-secondary/40 sm:col-span-2"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/15 text-primary">
+                    <Mail className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground">Email</p>
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {application.user.email}
+                    </p>
+                  </div>
+                </a>
+              )}
             </CardContent>
           </Card>
 
@@ -194,15 +273,13 @@ export function ApplicationDetail({ application }: { application: Application })
                 <div className="ml-auto">
                   <p className="mb-1 text-xs font-medium text-muted-foreground">Kategori</p>
                   <Badge variant="secondary" className="bg-primary/10 text-primary">
-                    {application.category}
+                    {application.category?.name || "Kategori Umum"}
                   </Badge>
                 </div>
               </div>
               <div>
-                <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                  Deskripsi
-                </p>
-                <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm leading-relaxed text-foreground/90">
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Deskripsi</p>
+                <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
                   {application.description}
                 </div>
               </div>
@@ -218,37 +295,30 @@ export function ApplicationDetail({ application }: { application: Application })
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {application.samplePhotos.length > 0 ? (
+              {samplePhotos.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {application.samplePhotos.map((src, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                  {samplePhotos.map((src, i) => (
+                    <a
                       key={i}
-                      src={src}
-                      alt={`Sampel ${i + 1}`}
-                      className="aspect-square w-full rounded-xl object-cover"
-                    />
+                      href={src}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative block aspect-square w-full overflow-hidden rounded-xl border border-border bg-secondary"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={src}
+                        alt={`Sampel ${i + 1}`}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      />
+                      <span className="absolute bottom-2 right-2 rounded bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </span>
+                    </a>
                   ))}
                 </div>
               ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {[1, 2, 3].map((n) => (
-                      <ArtImage
-                        key={n}
-                        variant="product"
-                        seed={`${application.id}-${n}`}
-                        categoryId={categoryId}
-                        label={`Sampel ${n}`}
-                        className="aspect-square w-full rounded-xl"
-                      />
-                    ))}
-                  </div>
-                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
-                    <ImageOff className="h-3.5 w-3.5" />
-                    Sampel belum diunggah — tampilan ilustrasi.
-                  </div>
-                </>
+                <p className="text-sm text-muted-foreground">Pemohon tidak menyertakan foto sampel karya.</p>
               )}
             </CardContent>
           </Card>
@@ -258,21 +328,42 @@ export function ApplicationDetail({ application }: { application: Application })
         <aside className="lg:sticky lg:top-6 lg:self-start">
           <Card className="gap-0">
             <CardHeader className="pb-3">
-              <CardTitle className="font-display text-base font-bold">
-                Aksi Kurasi
-              </CardTitle>
+              <CardTitle className="font-display text-base font-bold">Aksi Kurasi</CardTitle>
             </CardHeader>
             <CardContent>
-              {status === "pending" && (
+              {brandConflictError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Nama Brand Bentrok (409)</AlertTitle>
+                  <AlertDescription className="mt-1 space-y-2 text-xs">
+                    <p>{brandConflictError}</p>
+                    <p className="text-muted-foreground">
+                      Tolak pengajuan ini dengan alasan agar pemohon mengajukan ulang dengan nama brand lain.
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      className="mt-2 w-full text-xs"
+                      onClick={openRejectWithConflictReason}
+                    >
+                      Tolak dengan alasan ini
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {application.status === "pending" ? (
                 <div className="flex flex-col gap-3">
                   <Button
                     type="button"
                     size="lg"
                     className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={handleAccept}
+                    disabled={processing}
+                    onClick={handleApprove}
                   >
-                    <CheckCircle2 className="h-5 w-5" />
-                    Terima Pengajuan
+                    {processing ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+                    Setujui Pengajuan
                   </Button>
 
                   <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
@@ -282,6 +373,7 @@ export function ApplicationDetail({ application }: { application: Application })
                         size="lg"
                         variant="outline"
                         className="w-full gap-2 border-destructive/40 text-destructive hover:bg-destructive hover:text-white"
+                        disabled={processing}
                       >
                         <XCircle className="h-5 w-5" />
                         Tolak Pengajuan
@@ -291,83 +383,76 @@ export function ApplicationDetail({ application }: { application: Application })
                       <AlertDialogHeader>
                         <AlertDialogTitle>Tolak pengajuan ini?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Kreator akan menerima notifikasi penolakan via WhatsApp. Alasan
-                          opsional — membantu kreator memperbaiki pengajuan berikutnya.
+                          Alasan penolakan opsional (maksimal 500 karakter). Alasan akan membantu pemohon memahami keputusan kurasi.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <div className="space-y-1.5">
-                        <Label htmlFor="reject-reason" className="text-xs">
-                          Alasan penolakan (opsional)
-                        </Label>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <Label htmlFor="reject-reason" className="text-xs">
+                            Alasan penolakan
+                          </Label>
+                          <span>{rejectReason.length}/500</span>
+                        </div>
                         <Textarea
                           id="reject-reason"
-                          placeholder="Contoh: foto sampel kurang jelas, kategori sudah terlalu banyak."
+                          placeholder="Contoh: foto sampel kurang jelas, kategori sudah penuh."
                           value={rejectReason}
+                          maxLength={500}
                           onChange={(e) => setRejectReason(e.target.value)}
                           rows={3}
                         />
                       </div>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogCancel disabled={processing}>Batal</AlertDialogCancel>
                         <AlertDialogAction
                           className="bg-destructive text-white hover:bg-destructive/90"
+                          disabled={processing || rejectReason.length > 500}
                           onClick={handleReject}
                         >
-                          Ya, tolak pengajuan
+                          {processing ? "Memproses…" : "Ya, tolak pengajuan"}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
 
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Setelah diterima, kreator akan masuk ke list{" "}
-                    <span className="font-semibold text-foreground">
-                      &quot;Kreator Aktif&quot;
-                    </span>{" "}
-                    dan bisa mulai mengunggah produk.
+                    Setelah disetujui, pemohon otomatis berubah peran menjadi{" "}
+                    <span className="font-semibold text-foreground">kreator</span> dan profil tokonya aktif.
                   </p>
                 </div>
-              )}
-
-              {status === "approved" && (
+              ) : application.status === "diterima" ? (
                 <div className="flex flex-col items-center gap-3 py-2 text-center">
-                  <span className="animate-in zoom-in-95 grid h-14 w-14 place-items-center rounded-full bg-accent/15 text-accent duration-300">
+                  <span className="grid h-14 w-14 place-items-center rounded-full bg-accent/15 text-accent">
                     <CheckCircle2 className="h-8 w-8" />
                   </span>
                   <div>
-                    <p className="font-display text-base font-bold text-foreground">
-                      Pengajuan Diterima
-                    </p>
+                    <p className="font-display text-base font-bold text-foreground">Pengajuan Disetujui</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Kreator dipindahkan ke list aktif.
+                      {application.decidedAt ? `Diputuskan pada ${formatDateID(application.decidedAt)}` : "Status: Diterima"}
                     </p>
                   </div>
                   <Button asChild className="mt-1 w-full gap-2">
                     <Link href="/kreator">
                       <Users className="h-4 w-4" />
-                      Lihat Kreator Aktif
+                      Lihat Daftar Kreator
                     </Link>
                   </Button>
                 </div>
-              )}
-
-              {status === "rejected" && (
+              ) : (
                 <div className="flex flex-col items-center gap-3 py-2 text-center">
                   <span className="grid h-14 w-14 place-items-center rounded-full bg-destructive/15 text-destructive">
                     <XCircle className="h-8 w-8" />
                   </span>
                   <div>
-                    <p className="font-display text-base font-bold text-foreground">
-                      Pengajuan Ditolak
-                    </p>
+                    <p className="font-display text-base font-bold text-foreground">Pengajuan Ditolak</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Status pengajuan: ditolak.
+                      {application.decidedAt ? `Diputuskan pada ${formatDateID(application.decidedAt)}` : "Status: Ditolak"}
                     </p>
                   </div>
-                  {rejectReason && (
+                  {application.rejectReason && (
                     <div className="w-full rounded-md border border-border bg-muted/40 p-3 text-left text-xs text-foreground/80">
                       <span className="font-semibold text-foreground">Alasan: </span>
-                      {rejectReason}
+                      {application.rejectReason}
                     </div>
                   )}
                   <Button asChild variant="outline" className="mt-1 w-full gap-2">

@@ -22,14 +22,17 @@ import { RatingStars } from "@/components/site/rating-stars";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Artisan } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { RemoveAvatarDialog } from "@/app/(dashboard)/pengguna/components/RemoveAvatarDialog";
 
 interface CreatorListTabProps {
   artisans: Artisan[];
   onStatusUpdated: (updatedId: number | string, newStatus: "aktif" | "nonaktif") => void;
+  onPhotoRemoved?: () => void;
 }
 
-export function CreatorListTab({ artisans, onStatusUpdated }: CreatorListTabProps) {
+export function CreatorListTab({ artisans, onStatusUpdated, onPhotoRemoved }: CreatorListTabProps) {
   const [togglingId, setTogglingId] = useState<number | string | null>(null);
+  const [removingPhoto, setRemovingPhoto] = useState<Artisan | null>(null);
 
   const handleToggleStatus = async (artisan: Artisan) => {
     const isCurrentlyActive = artisan.status === "aktif";
@@ -82,6 +85,7 @@ export function CreatorListTab({ artisans, onStatusUpdated }: CreatorListTabProp
               <div className="flex items-start gap-4">
                 {/* Avatar Kreator */}
                 {c.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={c.avatarUrl}
                     alt={c.brandName}
@@ -128,7 +132,7 @@ export function CreatorListTab({ artisans, onStatusUpdated }: CreatorListTabProp
                     <RatingStars value={c.avgRating ?? 0} showValue />
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
                     <Link
                       href={`/produk?q=${encodeURIComponent(c.brandName)}`}
                       className="text-xs font-semibold text-primary hover:underline"
@@ -136,62 +140,76 @@ export function CreatorListTab({ artisans, onStatusUpdated }: CreatorListTabProp
                       Lihat produk
                     </Link>
 
-                    {c.isOfficial && (
-                      <span className="text-[11px] font-medium text-muted-foreground italic">
-                        Toko Resmi (Permanen Aktif)
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {c.ownAvatarUrl && !c.isOfficial && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => setRemovingPhoto(c)}
+                        >
+                          Hapus foto toko
+                        </Button>
+                      )}
 
-                    {!c.isOfficial && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={isToggling}
-                            className={cn(
-                              "h-8 gap-1.5 text-xs",
-                              isInactive
-                                ? "text-accent hover:bg-accent/10"
-                                : "text-destructive hover:bg-destructive/10"
-                            )}
-                          >
-                            {isToggling ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : isInactive ? (
-                              <Power className="h-3.5 w-3.5" />
-                            ) : (
-                              <PowerOff className="h-3.5 w-3.5" />
-                            )}
-                            {isInactive ? "Aktifkan" : "Nonaktifkan"}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              {isInactive
-                                ? `Aktifkan kreator "${c.brandName}"?`
-                                : `Nonaktifkan kreator "${c.brandName}"?`}
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {isInactive
-                              ? `${c.brandName} akan kembali berstatus aktif dan produknya dapat tayang di toko.`
-                              : `${c.brandName} akan dinonaktifkan. Produknya tidak akan muncul bagi pembeli.`}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Batal</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleToggleStatus(c)}
-                            className={isInactive ? "bg-accent text-white" : "bg-destructive text-destructive-foreground"}
-                          >
-                            {isInactive ? "Ya, Aktifkan" : "Ya, Nonaktifkan"}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                      </AlertDialog>
-                    )}
+                      {c.isOfficial && (
+                        <span className="text-[11px] font-medium text-muted-foreground italic">
+                          Toko Resmi (Permanen Aktif)
+                        </span>
+                      )}
+
+                      {!c.isOfficial && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={isToggling}
+                              className={cn(
+                                "h-8 gap-1.5 text-xs",
+                                isInactive
+                                  ? "text-accent hover:bg-accent/10"
+                                  : "text-destructive hover:bg-destructive/10"
+                              )}
+                            >
+                              {isToggling ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : isInactive ? (
+                                <Power className="h-3.5 w-3.5" />
+                              ) : (
+                                <PowerOff className="h-3.5 w-3.5" />
+                              )}
+                              {isInactive ? "Aktifkan" : "Nonaktifkan"}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                {isInactive
+                                  ? `Aktifkan kreator "${c.brandName}"?`
+                                  : `Nonaktifkan kreator "${c.brandName}"?`}
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {isInactive
+                                  ? `${c.brandName} akan kembali berstatus aktif dan produknya dapat tayang di toko.`
+                                  : `${c.brandName} akan dinonaktifkan. Produknya tidak akan muncul bagi pembeli.`}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Batal</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleToggleStatus(c)}
+                                className={isInactive ? "bg-accent text-white" : "bg-destructive text-destructive-foreground"}
+                              >
+                                {isInactive ? "Ya, Aktifkan" : "Ya, Nonaktifkan"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -199,6 +217,20 @@ export function CreatorListTab({ artisans, onStatusUpdated }: CreatorListTabProp
           </Card>
         );
       })}
+
+      {removingPhoto && (
+        <RemoveAvatarDialog
+          open
+          onOpenChange={(o) => !o && setRemovingPhoto(null)}
+          target="toko"
+          id={String(removingPhoto.id)}
+          name={removingPhoto.brandName}
+          onDone={() => {
+            setRemovingPhoto(null);
+            onPhotoRemoved?.();
+          }}
+        />
+      )}
     </div>
   );
 }

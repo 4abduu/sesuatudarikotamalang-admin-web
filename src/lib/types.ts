@@ -64,6 +64,7 @@ export interface Artisan {
   brandName: string;
   bio?: string | null;
   avatarUrl?: string | null;
+  ownAvatarUrl?: string | null;
   status: ArtisanStatus;
   isOfficial?: boolean;
   createdAt: string;
@@ -111,6 +112,7 @@ export interface Product {
   description?: string | null;
   price: number;
   images: string[];
+  imageVariants?: { url: string; option: string; value: string }[];
   isLimited: boolean;
   isActive: boolean;
   soldCount?: number;
@@ -208,6 +210,7 @@ export interface ArtisanApplication {
   categoryId?: number | string | null;
   description: string;
   sampleFileUrl?: string | null;
+  samplePhotos?: string[];
   status: ApplicationStatus;
   rejectReason?: string | null;
   submittedAt: string;

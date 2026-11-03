@@ -18,6 +18,11 @@ import {
   type ProductFormExtras,
   type ProductFormInitialValues,
 } from "@/app/(dashboard)/produk/components/product-form-fields";
+import {
+  syncPhotos,
+  rollbackUploads,
+  type PhotoSyncResult,
+} from "@/app/(dashboard)/produk/components/photo-manager";
 
 /** Penjual yang bisa dipilih admin: Official Store atau kreator aktif (GET /api/admin/artisans?status=aktif). */
 type Seller = {
@@ -27,22 +32,8 @@ type Seller = {
   status: string;
 };
 
-const MAX_FILES_PER_UPLOAD = 5; // batas POST /api/upload/multiple
-
 function cartesian(arrays: string[][]): string[][] {
   return arrays.reduce<string[][]>((acc, curr) => acc.flatMap((a) => curr.map((b) => [...a, b])), [[]]);
-}
-
-/** Unggah file ke Cloudinary lewat backend, per 5 file, dan kembalikan daftar URL HTTPS. */
-async function uploadFiles(files: File[]): Promise<string[]> {
-  const urls: string[] = [];
-  for (let i = 0; i < files.length; i += MAX_FILES_PER_UPLOAD) {
-    const form = new FormData();
-    files.slice(i, i + MAX_FILES_PER_UPLOAD).forEach((file) => form.append("files", file));
-    const res = await apiFetch<{ urls: string[] }>("/api/upload/multiple", { method: "POST", body: form });
-    urls.push(...(res.urls || []));
-  }
-  return urls;
 }
 
 /**
@@ -99,14 +90,18 @@ export function AdminTambahProdukContent() {
       toast.error("Deskripsi wajib diisi");
       return;
     }
-    const photos = extras?.photos ?? [];
-    if (photos.length === 0) {
-      toast.error("Tambahkan minimal satu foto produk");
+    const photoItems = extras?.photoItems ?? [];
+    if (photoItems.length === 0) {
+      toast.error("Produk harus punya minimal satu foto");
       return;
     }
-    const processPhotos = extras?.processPhotos ?? [];
-    if (values.hasStory && processPhotos.length > 10) {
-      // Batas backend untuk processImages; diperiksa di depan agar produk tidak terlanjur dibuat.
+    if (photoItems.length > 10) {
+      toast.error("Foto produk maksimal 10");
+      return;
+    }
+
+    const processItems = extras?.processItems ?? [];
+    if (values.hasStory && processItems.length > 10) {
       toast.error("Foto proses cerita maksimal 10");
       return;
     }
@@ -134,10 +129,17 @@ export function AdminTambahProdukContent() {
     }
 
     setSubmitting(true);
+    let syncProduct: PhotoSyncResult;
+    try {
+      syncProduct = await syncPhotos(photoItems);
+    } catch (err) {
+      setSubmitting(false);
+      toast.error(err instanceof ApiError ? err.message : "Foto gagal diunggah. Coba lagi.");
+      return;
+    }
+
     let createdId: string | null = null;
     try {
-      const images = await uploadFiles(photos);
-
       const created = await apiFetch<{ product: { id: string } }>("/api/products", {
         method: "POST",
         body: JSON.stringify({
@@ -146,7 +148,8 @@ export function AdminTambahProdukContent() {
           description: values.description.trim(),
           shortDescription: values.shortDesc.trim() || undefined,
           price: Number(values.price),
-          images,
+          images: syncProduct.images,
+          ...(syncProduct.imageVariants.length > 0 ? { imageVariants: syncProduct.imageVariants } : {}),
           isLimited: values.limited,
           shopeeUrl: values.shopeeUrl?.trim() || undefined,
           artisanId: sellerId,
@@ -154,31 +157,9 @@ export function AdminTambahProdukContent() {
         }),
       });
       createdId = created.product.id;
-
-      if (values.hasStory && values.story.title.trim() && values.story.body.trim()) {
-        const processImages = processPhotos.length ? await uploadFiles(processPhotos) : [];
-        await apiFetch(`/api/products/${createdId}/story`, {
-          method: "POST",
-          body: JSON.stringify({
-            title: values.story.title.trim(),
-            content: values.story.body.trim(),
-            process: values.story.process?.trim() || undefined,
-            ...(processImages.length ? { processImages } : {}),
-          }),
-        });
-      }
-
-      toast.success("Produk ditambahkan", { description: `${values.name.trim()} telah disimpan.` });
-      router.push("/produk");
     } catch (err) {
-      if (createdId) {
-        // Produk sudah dibuat tetapi cerita gagal: jangan buat produk ganda, arahkan ke halaman edit.
-        toast.warning("Produk tersimpan, tetapi cerita gagal disimpan", {
-          description: err instanceof ApiError ? err.message : "Silakan tambahkan cerita lewat halaman edit.",
-        });
-        router.push(`/produk/${createdId}/edit`);
-        return;
-      }
+      await rollbackUploads(syncProduct.newlyUploaded);
+      setSubmitting(false);
       if (err instanceof ApiError && err.code === "OFFICIAL_STORE_MISSING") {
         toast.error("Official Store belum dibuat", {
           description: "Minta pemilik backend menjalankan seed Official Store, lalu coba lagi.",
@@ -188,9 +169,48 @@ export function AdminTambahProdukContent() {
           description: err instanceof ApiError ? err.message : "Terjadi kesalahan tak terduga",
         });
       }
-    } finally {
-      setSubmitting(false);
+      return;
     }
+
+    if (values.hasStory && values.story.title.trim() && values.story.body.trim()) {
+      let syncStory: PhotoSyncResult | null = null;
+      if (processItems.length > 0) {
+        try {
+          syncStory = await syncPhotos(processItems);
+        } catch (err) {
+          toast.warning("Produk tersimpan, tetapi foto proses gagal diunggah", {
+            description: err instanceof ApiError ? err.message : "Coba tambahkan foto proses di halaman edit.",
+          });
+          router.push(`/produk/${createdId}/edit`);
+          return;
+        }
+      }
+
+      try {
+        await apiFetch(`/api/products/${createdId}/story`, {
+          method: "POST",
+          body: JSON.stringify({
+            title: values.story.title.trim(),
+            content: values.story.body.trim(),
+            process: values.story.process?.trim() || undefined,
+            ...(syncStory && syncStory.images.length > 0 ? { processImages: syncStory.images } : {}),
+          }),
+        });
+      } catch (err) {
+        if (syncStory) {
+          await rollbackUploads(syncStory.newlyUploaded);
+        }
+        toast.warning("Produk tersimpan, tetapi cerita gagal disimpan", {
+          description: err instanceof ApiError ? err.message : "Silakan tambahkan cerita lewat halaman edit.",
+        });
+        router.push(`/produk/${createdId}/edit`);
+        return;
+      }
+    }
+
+    setSubmitting(false);
+    toast.success("Produk ditambahkan", { description: `${values.name.trim()} telah disimpan.` });
+    router.push("/produk");
   };
 
   return (

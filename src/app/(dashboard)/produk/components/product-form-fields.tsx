@@ -49,6 +49,15 @@ import {
 } from "@/components/ui/select";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Category } from "@/lib/types";
+import {
+  PhotoManager,
+  createPhotoItems,
+  photoListsEqual,
+  revokePreviews,
+  type PhotoItem,
+  type VariantChoice,
+  type ImageVariantLink,
+} from "@/app/(dashboard)/produk/components/photo-manager";
 import { formatRupiah } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -75,13 +84,19 @@ export type ProductFormInitialValues = {
   hasStory: boolean;
   story: { title: string; body: string; process: string };
   existingImages?: string[];
+  initialImageVariants?: ImageVariantLink[];
+  existingProcessImages?: string[];
 };
 
 // [PATCH-3] Berkas yang dipilih di form (belum diunggah). Dikirim ke onSubmit sebagai argumen kedua
 // supaya halaman pemanggil (mis. Tambah Produk) dapat mengunggahnya ke POST /api/upload/multiple.
 export type ProductFormExtras = {
-  photos: File[];
-  processPhotos: File[];
+  photos?: File[];
+  processPhotos?: File[];
+  photoItems: PhotoItem[];
+  processItems: PhotoItem[];
+  initialPhotoItems: PhotoItem[];
+  initialProcessItems: PhotoItem[];
 };
 
 export const emptyInitialValues: ProductFormInitialValues = {
@@ -144,8 +159,16 @@ export function ProductFormFields({
   const [storyProcess, setStoryProcess] = useState(
     initialValues.story.process,
   );
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [processPhotos, setProcessPhotos] = useState<File[]>([]);
+  const [initialPhotoItems, setInitialPhotoItems] = useState<PhotoItem[]>(() =>
+    createPhotoItems(initialValues.existingImages ?? [], initialValues.initialImageVariants ?? [])
+  );
+  const [photoItems, setPhotoItems] = useState<PhotoItem[]>(initialPhotoItems);
+
+  const [initialProcessItems, setInitialProcessItems] = useState<PhotoItem[]>(() =>
+    createPhotoItems(initialValues.existingProcessImages ?? [])
+  );
+  const [processItems, setProcessItems] = useState<PhotoItem[]>(initialProcessItems);
+
   const [errors, setErrors] = useState<Errors>({});
 
   function addOption() {
@@ -187,14 +210,65 @@ export function ProductFormFields({
     [parsedOptions, optionsComplete],
   );
 
-  function handlePhotos(list: FileList | null) {
-    if (!list) return;
-    setPhotos(Array.from(list));
+  const variantChoices: VariantChoice[] | undefined = useMemo(() => {
+    if (mode === "edit") {
+      const stored = initialValues.variantOptions
+        .map((o) => ({
+          option: o.name.trim(),
+          values: o.valuesText.split(",").map((v) => v.trim()).filter(Boolean),
+        }))
+        .filter((o) => o.option && o.values.length > 0);
+      return stored.length > 0 ? stored : undefined;
+    }
+    const current = parsedOptions.filter((o) => o.name && o.values.length > 0);
+    return current.length > 0
+      ? current.map((c) => ({ option: c.name, values: c.values }))
+      : undefined;
+  }, [mode, initialValues.variantOptions, parsedOptions]);
+
+  // Pada Tambah, jika admin menghapus opsi/nilai sehingga link invalid, lepaskan link
+  useEffect(() => {
+    if (mode !== "create") return;
+    if (!variantChoices || variantChoices.length === 0) {
+      let detached = false;
+      setPhotoItems((prev) =>
+        prev.map((item) => {
+          if (item.variantOption || item.variantValue) {
+            detached = true;
+            return { ...item, variantOption: null, variantValue: null };
+          }
+          return item;
+        })
+      );
+      if (detached) toast.info("Tautan varian foto dilepas karena opsi varian dihapus");
+      return;
+    }
+
+    let detached = false;
+    setPhotoItems((prev) =>
+      prev.map((item) => {
+        if (!item.variantOption || !item.variantValue) return item;
+        const opt = variantChoices.find((vc) => vc.option === item.variantOption);
+        if (!opt || !opt.values.includes(item.variantValue)) {
+          detached = true;
+          return { ...item, variantOption: null, variantValue: null };
+        }
+        return item;
+      })
+    );
+    if (detached) {
+      toast.info("Sebagian tautan varian foto disesuaikan");
+    }
+  }, [variantChoices, mode]);
+
+  function resetPhotos() {
+    revokePreviews(photoItems);
+    setPhotoItems(initialPhotoItems);
   }
 
-  function handleProcessPhotos(list: FileList | null) {
-    if (!list) return;
-    setProcessPhotos(Array.from(list));
+  function resetProcessPhotos() {
+    revokePreviews(processItems);
+    setProcessItems(initialProcessItems);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -210,22 +284,29 @@ export function ProductFormFields({
     }
     onSubmit(
       {
-      name,
-      categoryId,
-      price,
-      shortDesc,
-      description,
-      limited,
-      shopeeUrl: initialValues.shopeeUrl,
-      singleStock,
-      variantOptions,
-      variantStocks,
-      variantIds: initialValues.variantIds,
-      hasStory,
-      story: { title: storyTitle, body: storyBody, process: storyProcess },
-      existingImages: initialValues.existingImages,
+        name,
+        categoryId,
+        price,
+        shortDesc,
+        description,
+        limited,
+        shopeeUrl: initialValues.shopeeUrl,
+        singleStock,
+        variantOptions,
+        variantStocks,
+        variantIds: initialValues.variantIds,
+        hasStory,
+        story: { title: storyTitle, body: storyBody, process: storyProcess },
+        existingImages: initialValues.existingImages,
+        initialImageVariants: initialValues.initialImageVariants,
+        existingProcessImages: initialValues.existingProcessImages,
       },
-      { photos, processPhotos }, // [PATCH-3]
+      {
+        photoItems,
+        processItems,
+        initialPhotoItems,
+        initialProcessItems,
+      },
     );
   }
 
@@ -355,18 +436,19 @@ export function ProductFormFields({
             Foto Produk
           </CardTitle>
           <CardDescription className="text-xs">
-            Upload foto utama dan tambahan. Visual saja — belum tersimpan ke
-            server.
+            Unggah foto utama dan tambahan (JPG, PNG, atau WebP, maks 2 MB per foto). Foto pertama menjadi foto utama.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <PhotoDropzone
-            id="product-photos"
-            files={photos}
-            onChange={handlePhotos}
-            onRemove={(i) =>
-              setPhotos((prev) => prev.filter((_, idx) => idx !== i))
-            }
+          <PhotoManager
+            items={photoItems}
+            onChange={setPhotoItems}
+            max={10}
+            inputId="product-photos-input"
+            label="Foto produk"
+            variantChoices={variantChoices}
+            dirty={!photoListsEqual(photoItems, initialPhotoItems)}
+            onReset={resetPhotos}
           />
         </CardContent>
       </Card>
@@ -589,13 +671,14 @@ export function ProductFormFields({
             </div>
             <div className="space-y-1.5">
               <Label>Foto Proses</Label>
-              <PhotoDropzone
-                id="process-photos"
-                files={processPhotos}
-                onChange={handleProcessPhotos}
-                onRemove={(i) =>
-                  setProcessPhotos((prev) => prev.filter((_, idx) => idx !== i))
-                }
+              <PhotoManager
+                items={processItems}
+                onChange={setProcessItems}
+                max={10}
+                inputId="process-photos-input"
+                label="Foto proses"
+                dirty={!photoListsEqual(processItems, initialProcessItems)}
+                onReset={resetProcessPhotos}
               />
             </div>
           </CardContent>
@@ -624,66 +707,6 @@ export function ProductFormFields({
         </Button>
       </div>
     </form>
-  );
-}
-
-/* ---- subcomponent: photo dropzone ---- */
-function PhotoDropzone({
-  id,
-  files,
-  onChange,
-  onRemove,
-}: {
-  id: string;
-  files: File[];
-  onChange: (list: FileList | null) => void;
-  onRemove: (idx: number) => void;
-}) {
-  return (
-    <div className="space-y-3">
-      <label
-        htmlFor={id}
-        className="group flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-background px-4 py-6 text-center transition-colors hover:border-primary/50 hover:bg-secondary/40"
-      >
-        <span className="grid h-10 w-10 place-items-center rounded-full bg-secondary text-primary transition-transform group-hover:scale-110">
-          <ImagePlus className="h-5 w-5" />
-        </span>
-        <span className="text-sm font-medium text-foreground">
-          Klik untuk unggah foto
-        </span>
-        <span className="text-[11px] text-muted-foreground">
-          Bisa pilih banyak · JPG/PNG · visual saja
-        </span>
-        <input
-          id={id}
-          type="file"
-          multiple
-          accept="image/*"
-          className="sr-only"
-          onChange={(e) => onChange(e.target.files)}
-        />
-      </label>
-      {files.length > 0 && (
-        <ul className="flex flex-wrap gap-2">
-          {files.map((f, i) => (
-            <li
-              key={`${f.name}-${i}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary/40 px-3 py-1 text-xs"
-            >
-              <span className="max-w-40 truncate">{f.name}</span>
-              <button
-                type="button"
-                aria-label={`Hapus ${f.name}`}
-                onClick={() => onRemove(i)}
-                className="grid h-4 w-4 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 

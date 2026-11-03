@@ -17,7 +17,14 @@ import { Product } from "@/lib/types";
 import {
   ProductFormFields,
   type ProductFormInitialValues,
+  type ProductFormExtras,
 } from "@/app/(dashboard)/produk/components/product-form-fields";
+import {
+  photoListsEqual,
+  syncPhotos,
+  rollbackUploads,
+  type PhotoSyncResult,
+} from "@/app/(dashboard)/produk/components/photo-manager";
 
 /* ─────────────────────────────────────────────────────────────────────── *
  *  ProductEditContent — fetch produk dari API lalu tampilkan form edit
@@ -101,6 +108,18 @@ export function ProductEditContent({ productId }: { productId: string }) {
 function ProductEditForm({ product }: { product: Product }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
 
   // Petakan data API → format yang dipakai ProductFormFields
   const initialValues: ProductFormInitialValues = {
@@ -149,13 +168,49 @@ function ProductEditForm({ product }: { product: Product }) {
       process: "",
     },
     existingImages: product.images ?? [],
+    initialImageVariants: product.imageVariants ?? [],
+    existingProcessImages: product.story?.processImages ?? [],
   };
 
-  const handleSubmit = async (values: ProductFormInitialValues) => {
+  const handleSubmit = async (
+    values: ProductFormInitialValues,
+    extras?: ProductFormExtras,
+  ) => {
+    const photoItems = extras?.photoItems ?? [];
+    const initialPhotoItems = extras?.initialPhotoItems ?? [];
+    const processItems = extras?.processItems ?? [];
+    const initialProcessItems = extras?.initialProcessItems ?? [];
+
+    if (photoItems.length === 0) {
+      toast.error("Produk harus punya minimal satu foto");
+      return;
+    }
+    if (photoItems.length > 10) {
+      toast.error("Foto produk maksimal 10");
+      return;
+    }
+    if (values.hasStory && processItems.length > 10) {
+      toast.error("Foto proses cerita maksimal 10");
+      return;
+    }
+
+    const photosChanged = !photoListsEqual(photoItems, initialPhotoItems);
+    const processChanged = !photoListsEqual(processItems, initialProcessItems);
+
     setSubmitting(true);
+    let syncProduct: PhotoSyncResult | null = null;
+    if (photosChanged) {
+      try {
+        syncProduct = await syncPhotos(photoItems);
+      } catch (err) {
+        setSubmitting(false);
+        toast.error(err instanceof ApiError ? err.message : "Foto gagal diunggah. Coba lagi.");
+        return;
+      }
+    }
+
     try {
       // PUT /api/products/:id — hanya field yang didukung kontrak
-      // (variantOptions tidak bisa diubah, hanya stok per variant via variantStocks[{id,stock}])
       const variantStocksPayload = product.variants
         ?.map((v) => {
           const key = v.combination.join(" / ") || "(default)";
@@ -164,43 +219,87 @@ function ProductEditForm({ product }: { product: Product }) {
         })
         .filter((v) => !isNaN(v.stock));
 
-      await apiFetch(`/api/products/${product.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          name: values.name.trim(),
-          categoryId: values.categoryId,
-          price: Number(values.price),
-          shortDescription: values.shortDesc.trim() || undefined,
-          description: values.description.trim() || undefined,
-          isLimited: values.limited,
-          shopeeUrl: values.shopeeUrl?.trim() || undefined,
-          variantStocks: variantStocksPayload,
-        }),
-      });
+      const putBody: Record<string, any> = {
+        name: values.name.trim(),
+        categoryId: values.categoryId,
+        price: Number(values.price),
+        shortDescription: values.shortDesc.trim() || undefined,
+        description: values.description.trim() || undefined,
+        isLimited: values.limited,
+        shopeeUrl: values.shopeeUrl?.trim() || undefined,
+        variantStocks: variantStocksPayload,
+      };
 
-      // Simpan cerita (POST /api/products/:id/story) jika aktif
-      if (values.hasStory && values.story.title && values.story.body) {
-        await apiFetch(`/api/products/${product.id}/story`, {
-          method: "POST",
-          body: JSON.stringify({
-            title: values.story.title.trim(),
-            content: values.story.body.trim(),
-            process: values.story.process?.trim() || undefined,
-          }),
-        });
+      if (photosChanged && syncProduct) {
+        putBody.images = syncProduct.images;
+        putBody.imageVariants = syncProduct.imageVariants;
       }
 
-      toast.success("Produk berhasil diperbarui", {
-        description: `${values.name} telah disimpan.`,
+      await apiFetch(`/api/products/${product.id}`, {
+        method: "PUT",
+        body: JSON.stringify(putBody),
       });
-      router.push("/produk");
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : "Gagal menyimpan produk";
-      toast.error("Gagal menyimpan", { description: msg });
-    } finally {
+      if (syncProduct) {
+        await rollbackUploads(syncProduct.newlyUploaded);
+      }
       setSubmitting(false);
+      const msg = err instanceof ApiError ? err.message : "Gagal menyimpan produk";
+      toast.error("Gagal menyimpan", { description: msg });
+      return;
     }
+
+    // Simpan cerita (POST /api/products/:id/story) jika aktif
+    if (values.hasStory && values.story.title && values.story.body) {
+      let syncStory: PhotoSyncResult | null = null;
+      if (processChanged && processItems.length > 0) {
+        try {
+          syncStory = await syncPhotos(processItems);
+        } catch (err) {
+          toast.warning("Produk tersimpan, tetapi foto proses gagal diunggah", {
+            description: err instanceof ApiError ? err.message : "Coba simpan ulang cerita.",
+          });
+          setIsDirty(false);
+          setSubmitting(false);
+          router.push("/produk");
+          return;
+        }
+      }
+
+      try {
+        const storyBody: Record<string, any> = {
+          title: values.story.title.trim(),
+          content: values.story.body.trim(),
+          process: values.story.process?.trim() || undefined,
+        };
+        if (processChanged) {
+          storyBody.processImages = syncStory ? syncStory.images : [];
+        }
+
+        await apiFetch(`/api/products/${product.id}/story`, {
+          method: "POST",
+          body: JSON.stringify(storyBody),
+        });
+      } catch (err) {
+        if (syncStory) {
+          await rollbackUploads(syncStory.newlyUploaded);
+        }
+        toast.warning("Produk tersimpan, tetapi cerita gagal disimpan", {
+          description: err instanceof ApiError ? err.message : "Silakan cek kembali cerita di produk ini.",
+        });
+        setIsDirty(false);
+        setSubmitting(false);
+        router.push("/produk");
+        return;
+      }
+    }
+
+    setIsDirty(false);
+    setSubmitting(false);
+    toast.success("Produk berhasil diperbarui", {
+      description: `${values.name} telah disimpan.`,
+    });
+    router.push("/produk");
   };
 
   return (

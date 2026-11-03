@@ -22,7 +22,7 @@ export function CreatorContent() {
     try {
       const [artRes, appRes] = await Promise.all([
         apiFetch<{ artisans: Artisan[] }>("/api/admin/artisans"),
-        apiFetch<{ applications: ArtisanApplication[] }>("/api/admin/applications"),
+        apiFetch<{ applications: ArtisanApplication[] }>("/api/admin/applications?status=pending"),
       ]);
       setArtisans(artRes.artisans || []);
       setApplications(appRes.applications || []);
@@ -94,6 +94,7 @@ export function CreatorContent() {
         <CreatorListTab
           artisans={artisans}
           onStatusUpdated={handleStatusUpdated}
+          onPhotoRemoved={fetchData}
         />
       </TabsContent>
 
