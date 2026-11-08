@@ -53,6 +53,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { Order, OrderStatus } from "@/lib/types";
 import { formatRupiah } from "@/lib/format";
 import { toast } from "sonner";
+import { HolidayAffectedBadge, HolidayAffectedNotice } from "../../components/HolidayAffectedBadge";
 
 /* ─────────────────────────────────────────────────────────────────────────── *
  *  Peta transisi status yang diizinkan backend (API_CONTRACT.md §9)
@@ -398,6 +399,7 @@ function OrderDetail({
             {order.orderNumber}
           </h1>
           <OrderStatusBadge status={order.status} />
+          <HolidayAffectedBadge affected={order.affectedByHoliday} />
           {isLateSettlement && (
             <Badge variant="destructive" className="gap-1 text-xs">
               <AlertCircle className="h-3 w-3" />
@@ -415,6 +417,12 @@ function OrderDetail({
       </div>
 
       {/* ── Banner: Lewat Batas Pengambilan + tombol Batalkan cepat ── */}
+      <HolidayAffectedNotice
+        affected={order.affectedByHoliday}
+        reason={order.holidayInfo?.reason}
+        pickupDate={order.pickupDate}
+      />
+
       {order.status === "lewat_batas_pengambilan" && (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">

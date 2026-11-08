@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { AlertTriangle, Pencil, Power, PowerOff, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, Pencil, Power, PowerOff, Loader2, Boxes } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,8 @@ const LOW_STOCK_THRESHOLD = 6;
 interface ProductTableProps {
   products: Product[];
   onDeleteSuccess: (id: number | string) => void;
+  onStockAdjusted: () => void;
+  onAdjustStock: (product: Product) => void;
   onToggleActive: (id: number | string, currentStatus: boolean) => void;
   togglingId: number | string | null;
 }
@@ -28,6 +31,8 @@ interface ProductTableProps {
 export function ProductTable({
   products,
   onDeleteSuccess,
+  onStockAdjusted,
+  onAdjustStock,
   onToggleActive,
   togglingId,
 }: ProductTableProps) {
@@ -112,30 +117,68 @@ export function ProductTable({
                     
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onToggleActive(p.id, p.isActive)}
-                      disabled={isToggling}
-                      className={cn(
-                        "h-7 gap-1 px-2.5 text-xs font-semibold",
-                        p.isActive
-                          ? "border-accent/40 bg-accent/10 text-accent hover:bg-accent/20"
-                          : "border-muted-foreground/30 bg-muted/40 text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      {isToggling ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : p.isActive ? (
-                        <Power className="h-3 w-3 text-accent" />
-                      ) : (
-                        <PowerOff className="h-3 w-3 text-muted-foreground" />
-                      )}
-                      {p.isActive ? "Aktif" : "Nonaktif"}
-                    </Button>
+                    {p.displayStatus === "menunggu" || p.displayStatus === "ditolak" ? (
+                      <Link href="/produk/persetujuan">
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "cursor-pointer text-xs font-medium hover:underline",
+                            p.displayStatus === "menunggu"
+                              ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                              : "bg-destructive/15 text-destructive"
+                          )}
+                        >
+                          {p.displayStatus === "menunggu" ? "Menunggu persetujuan" : "Ditolak"}
+                        </Badge>
+                      </Link>
+                    ) : (
+                      <div className="flex flex-col items-start gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onToggleActive(p.id, p.isActive)}
+                          disabled={isToggling}
+                          className={cn(
+                            "h-7 gap-1 px-2.5 text-xs font-semibold",
+                            p.isActive
+                              ? "border-accent/40 bg-accent/10 text-accent hover:bg-accent/20"
+                              : "border-muted-foreground/30 bg-muted/40 text-muted-foreground hover:bg-muted"
+                          )}
+                        >
+                          {isToggling ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : p.isActive ? (
+                            <Power className="h-3 w-3 text-accent" />
+                          ) : (
+                            <PowerOff className="h-3 w-3 text-muted-foreground" />
+                          )}
+                          {p.isActive ? "Aktif" : "Nonaktif"}
+                        </Button>
+                        {p.displayStatus === "ditarik" && (
+                          <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-[10px] text-destructive">
+                            Ditarik
+                          </Badge>
+                        )}
+                        {p.displayStatus === "disembunyikan" && (
+                          <Badge variant="outline" className="border-muted-foreground/30 bg-muted/40 text-[10px] text-muted-foreground">
+                            Disembunyikan
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="pr-5 text-right">
                     <div className="inline-flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        aria-label="Sesuaikan stok"
+                        title="Sesuaikan stok"
+                        onClick={() => onAdjustStock(p)}
+                      >
+                        <Boxes className="h-4 w-4" />
+                      </Button>
                       <Button
                         asChild
                         variant="ghost"
@@ -196,27 +239,55 @@ export function ProductTable({
                     <Badge variant="secondary" className="font-normal">
                       {p.category?.name ?? "Umum"}
                     </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onToggleActive(p.id, p.isActive)}
-                      disabled={isToggling}
-                      className={cn(
-                        "h-6 gap-1 px-2 text-[10px] font-semibold",
-                        p.isActive
-                          ? "border-accent/40 bg-accent/10 text-accent"
-                          : "border-muted-foreground/30 bg-muted/40 text-muted-foreground"
-                      )}
-                    >
-                      {isToggling ? (
-                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                      ) : p.isActive ? (
-                        <Power className="h-2.5 w-2.5 text-accent" />
-                      ) : (
-                        <PowerOff className="h-2.5 w-2.5 text-muted-foreground" />
-                      )}
-                      {p.isActive ? "Aktif" : "Nonaktif"}
-                    </Button>
+                    {p.displayStatus === "menunggu" || p.displayStatus === "ditolak" ? (
+                      <Link href="/produk/persetujuan">
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "cursor-pointer text-[10px] font-medium",
+                            p.displayStatus === "menunggu"
+                              ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                              : "bg-destructive/15 text-destructive"
+                          )}
+                        >
+                          {p.displayStatus === "menunggu" ? "Menunggu" : "Ditolak"}
+                        </Badge>
+                      </Link>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onToggleActive(p.id, p.isActive)}
+                          disabled={isToggling}
+                          className={cn(
+                            "h-6 gap-1 px-2 text-[10px] font-semibold",
+                            p.isActive
+                              ? "border-accent/40 bg-accent/10 text-accent"
+                              : "border-muted-foreground/30 bg-muted/40 text-muted-foreground"
+                          )}
+                        >
+                          {isToggling ? (
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          ) : p.isActive ? (
+                            <Power className="h-2.5 w-2.5 text-accent" />
+                          ) : (
+                            <PowerOff className="h-2.5 w-2.5 text-muted-foreground" />
+                          )}
+                          {p.isActive ? "Aktif" : "Nonaktif"}
+                        </Button>
+                        {p.displayStatus === "ditarik" && (
+                          <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-[9px] text-destructive">
+                            Ditarik
+                          </Badge>
+                        )}
+                        {p.displayStatus === "disembunyikan" && (
+                          <Badge variant="outline" className="border-muted-foreground/30 bg-muted/40 text-[9px] text-muted-foreground">
+                            Disembunyikan
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -245,6 +316,15 @@ export function ProductTable({
                 </div>
               </div>
               <div className="mt-3 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5"
+                  onClick={() => onAdjustStock(p)}
+                >
+                  <Boxes className="h-3.5 w-3.5" />
+                  Sesuaikan Stok
+                </Button>
                 <Button
                   asChild
                   variant="outline"

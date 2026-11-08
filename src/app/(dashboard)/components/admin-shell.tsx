@@ -13,6 +13,10 @@ import {
   Star,
   Settings,
   Clock,
+  ClipboardCheck,
+  Hourglass,
+  FileBarChart,
+  History,
   LogOut,
   Menu,
 } from "lucide-react";
@@ -24,12 +28,16 @@ import { LogoHand } from "@/components/site/line-art";
 const navItems = [
   { href: "/", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/produk", label: "Produk", Icon: Package },
+  { href: "/produk/persetujuan", label: "Persetujuan Produk", Icon: ClipboardCheck },
+  { href: "/produk/lambat-laku", label: "Produk Lambat Laku", Icon: Hourglass },
+  { href: "/stok", label: "Riwayat Stok", Icon: History },
   { href: "/pesanan", label: "Pesanan", Icon: ShoppingCart },
   { href: "/scan-qr", label: "Scan QR", Icon: QrCode },
   { href: "/kreator", label: "Kreator", Icon: Users },
   { href: "/pengguna", label: "Pengguna", Icon: UserRound },
   { href: "/ulasan", label: "Ulasan", Icon: Star },
   { href: "/jadwal-pickup", label: "Jadwal Pickup", Icon: Clock },
+  { href: "/laporan", label: "Laporan Bulanan", Icon: FileBarChart },
   { href: "/pengaturan", label: "Pengaturan", Icon: Settings },
 ];
 
@@ -88,8 +96,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const adminName = useUserAuth((s) => s.user?.name) ?? "Admin";
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    if (!pathname.startsWith(href)) return false;
+    const moreSpecific = navItems.some(
+      (n) => n.href !== href && n.href.startsWith(`${href}/`) && pathname.startsWith(n.href)
+    );
+    return !moreSpecific;
+  };
 
   const handleLogout = () => {
     logout();

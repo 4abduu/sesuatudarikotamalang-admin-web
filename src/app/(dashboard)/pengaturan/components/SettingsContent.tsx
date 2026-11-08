@@ -10,6 +10,7 @@ import { AppSettings } from "@/lib/types";
 import { ReservationSettingsCard } from "./ReservationSettingsCard";
 import { PickupDeadlineCard } from "./PickupDeadlineCard";
 import { ContactSettingsCard } from "./ContactSettingsCard";
+import { OperationalSettingsCards } from "./OperationalSettingsCards";
 
 export function SettingsContent() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -166,6 +167,9 @@ export function SettingsContent() {
         onSave={saveAllSettings}
         loading={saving}
       />
+
+      {/* 4. Pengaturan stok menipis & bagi hasil utama */}
+      <OperationalSettingsCards />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
 import { OrderStatusBadge } from "@/app/(dashboard)/components/admin-ui";
 import { formatRupiah } from "@/lib/format";
 import { Order } from "@/lib/types";
+import { HolidayAffectedBadge } from "./HolidayAffectedBadge";
 
 function formatDateID(iso: string) {
   if (!iso) return "-";
@@ -105,6 +106,7 @@ export function OrderTable({ orders }: OrderTableProps) {
                   <TableCell className="px-4 py-3">
                     <span className="text-sm text-foreground">
                       {formatDateID(o.pickupDate)}
+                      <HolidayAffectedBadge affected={o.affectedByHoliday} className="mt-1" />
                     </span>
                     <span className="ml-1 text-xs text-muted-foreground">
                       · {o.pickupSlot}
@@ -215,6 +217,7 @@ export function OrderTable({ orders }: OrderTableProps) {
                     </p>
                     <p className="text-sm text-foreground">
                       {formatDateID(o.pickupDate)}
+                      <HolidayAffectedBadge affected={o.affectedByHoliday} className="mt-1" />
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {o.pickupSlot} · {o.paymentMethod === "cod" ? "Cash/QRIS" : "Midtrans"}

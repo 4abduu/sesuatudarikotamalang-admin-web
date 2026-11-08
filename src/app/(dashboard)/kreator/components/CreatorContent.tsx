@@ -13,6 +13,7 @@ import { ApplicationListTab } from "./ApplicationListTab";
 export function CreatorContent() {
   const [artisans, setArtisans] = useState<Artisan[]>([]);
   const [applications, setApplications] = useState<ArtisanApplication[]>([]);
+  const [defaultCreatorSharePercent, setDefaultCreatorSharePercent] = useState(70);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,12 +21,14 @@ export function CreatorContent() {
     setLoading(true);
     setError(null);
     try {
-      const [artRes, appRes] = await Promise.all([
+      const [artRes, appRes, settingsRes] = await Promise.all([
         apiFetch<{ artisans: Artisan[] }>("/api/admin/artisans"),
         apiFetch<{ applications: ArtisanApplication[] }>("/api/admin/applications?status=pending"),
+        apiFetch<{ settings?: { defaultCreatorSharePercent?: number } }>("/api/admin/settings"),
       ]);
       setArtisans(artRes.artisans || []);
       setApplications(appRes.applications || []);
+      setDefaultCreatorSharePercent(settingsRes.settings?.defaultCreatorSharePercent ?? 70);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -94,6 +97,8 @@ export function CreatorContent() {
         <CreatorListTab
           artisans={artisans}
           onStatusUpdated={handleStatusUpdated}
+          defaultCreatorSharePercent={defaultCreatorSharePercent}
+          onShareUpdated={(updated) => setArtisans((prev) => prev.map((artisan) => artisan.id === updated.id ? { ...artisan, creatorSharePercent: updated.creatorSharePercent, effectiveCreatorSharePercent: updated.effectiveCreatorSharePercent } : artisan))}
           onPhotoRemoved={fetchData}
         />
       </TabsContent>

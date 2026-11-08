@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Package, Power, PowerOff, Loader2 } from "lucide-react";
+import { Package, Power, PowerOff, Loader2, Percent } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,16 +23,20 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { Artisan } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { RemoveAvatarDialog } from "@/app/(dashboard)/pengguna/components/RemoveAvatarDialog";
+import { EditCreatorShareDialog } from "./EditCreatorShareDialog";
 
 interface CreatorListTabProps {
   artisans: Artisan[];
   onStatusUpdated: (updatedId: number | string, newStatus: "aktif" | "nonaktif") => void;
+  defaultCreatorSharePercent: number;
+  onShareUpdated: (updated: { id: number | string; creatorSharePercent: number | null; effectiveCreatorSharePercent: number }) => void;
   onPhotoRemoved?: () => void;
 }
 
-export function CreatorListTab({ artisans, onStatusUpdated, onPhotoRemoved }: CreatorListTabProps) {
+export function CreatorListTab({ artisans, onStatusUpdated, defaultCreatorSharePercent, onShareUpdated, onPhotoRemoved }: CreatorListTabProps) {
   const [togglingId, setTogglingId] = useState<number | string | null>(null);
   const [removingPhoto, setRemovingPhoto] = useState<Artisan | null>(null);
+  const [shareTarget, setShareTarget] = useState<Artisan | null>(null);
 
   const handleToggleStatus = async (artisan: Artisan) => {
     const isCurrentlyActive = artisan.status === "aktif";
@@ -141,6 +145,12 @@ export function CreatorListTab({ artisans, onStatusUpdated, onPhotoRemoved }: Cr
                     </Link>
 
                     <div className="flex items-center gap-1.5">
+                      {!c.isOfficial && (
+                        <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setShareTarget(c)}>
+                          <Percent className="h-3.5 w-3.5" />
+                          {c.effectiveCreatorSharePercent ?? defaultCreatorSharePercent}%
+                        </Button>
+                      )}
                       {c.ownAvatarUrl && !c.isOfficial && (
                         <Button
                           type="button"
@@ -228,6 +238,23 @@ export function CreatorListTab({ artisans, onStatusUpdated, onPhotoRemoved }: Cr
           onDone={() => {
             setRemovingPhoto(null);
             onPhotoRemoved?.();
+          }}
+        />
+      )}
+      {shareTarget && (
+        <EditCreatorShareDialog
+          open
+          artisan={{
+            id: shareTarget.id,
+            brandName: shareTarget.brandName,
+            creatorSharePercent: shareTarget.creatorSharePercent ?? null,
+            effectiveCreatorSharePercent: shareTarget.effectiveCreatorSharePercent ?? defaultCreatorSharePercent,
+          }}
+          defaultPercent={defaultCreatorSharePercent}
+          onClose={() => setShareTarget(null)}
+          onSaved={(id, creatorSharePercent, effectiveCreatorSharePercent) => {
+            onShareUpdated({ id, creatorSharePercent, effectiveCreatorSharePercent });
+            setShareTarget(null);
           }}
         />
       )}

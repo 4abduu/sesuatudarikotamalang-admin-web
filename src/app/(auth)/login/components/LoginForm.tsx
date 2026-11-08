@@ -1,59 +1,82 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
+import { CircleAlert, Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
 import { useUserAuth, demoUsers } from "@/lib/user-auth";
 import { apiFetch, ApiError } from "@/lib/api";
 import { User } from "@/lib/types";
 
+const inputClass =
+  "h-12 w-full rounded-xl border border-input bg-card px-4 text-base text-foreground outline-none transition placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-primary/20 aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-4 aria-[invalid=true]:ring-destructive/15";
+
 export function LoginForm() {
   const router = useRouter();
   const login = useUserAuth((s) => s.login);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [invalid, setInvalid] = useState({ email: false, password: false });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const clearError = () => {
+    if (error) setError(null);
+    if (invalid.email || invalid.password) setInvalid({ email: false, password: false });
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      toast.error("Isi email dan password dulu ya");
+    if (loading) return;
+
+    const emailValue = email.trim();
+    const passwordValue = password.trim();
+
+    if (!emailValue || !passwordValue) {
+      setInvalid({ email: !emailValue, password: !passwordValue });
+      setError("Isi email dan password dulu ya.");
+      (emailValue ? passwordRef : emailRef).current?.focus();
       return;
     }
+
+    clearError();
     setLoading(true);
+    let succeeded = false;
 
     try {
       const data = await apiFetch<{ token: string; user: User }>("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+        body: JSON.stringify({ email: emailValue, password: passwordValue }),
       });
 
       if (data.user.role !== "admin") {
-        toast.error("Akun ini bukan admin");
-        setLoading(false);
+        setError("Akun ini bukan akun admin.");
         return;
       }
 
       localStorage.setItem("token", data.token);
       login(data.user);
       toast.success("Berhasil masuk. Selamat datang, Admin!");
+      succeeded = true;
       router.push("/");
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 429) {
-          toast.error("Terlalu banyak percobaan. Silakan tunggu beberapa menit.");
+          setError("Terlalu banyak percobaan. Tunggu beberapa menit, lalu coba lagi.");
         } else if (err.code === "GOOGLE_ACCOUNT") {
-          toast.error("Akun ini hanya terdaftar via Google.");
+          setError("Akun ini terdaftar lewat Google, jadi tidak bisa masuk dengan password.");
         } else {
-          toast.error(err.message);
+          setError(err.message);
         }
       } else {
-        toast.error("Gagal terhubung ke server");
+        setError("Tidak bisa terhubung ke server. Periksa koneksi, lalu coba lagi.");
       }
     } finally {
-      setLoading(false);
+      // Saat berhasil, tombol tetap nonaktif sampai halaman berpindah.
+      if (!succeeded) setLoading(false);
     }
   };
 
@@ -65,55 +88,81 @@ export function LoginForm() {
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <div className="space-y-1.5">
-          <label htmlFor="email" className="text-sm font-medium text-foreground">
-            Email / Username
+      <form onSubmit={handleSubmit} aria-busy={loading} className="mt-8 space-y-5">
+        <div className="space-y-2">
+          <label htmlFor="email" className="text-sm font-semibold text-foreground">
+            Email atau username
           </label>
           <input
+            ref={emailRef}
             id="email"
             type="text"
             autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearError();
+            }}
             placeholder="admin@darikotamalang.id"
-            className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+            aria-invalid={invalid.email}
+            aria-describedby={error ? "login-error" : undefined}
+            className={inputClass}
           />
         </div>
-        <div className="space-y-1.5">
-          <label htmlFor="password" className="text-sm font-medium text-foreground">
+
+        <div className="space-y-2">
+          <label htmlFor="password" className="text-sm font-semibold text-foreground">
             Password
           </label>
           <div className="relative">
             <input
+              ref={passwordRef}
               id="password"
               type={showPw ? "text" : "password"}
               autoComplete="current-password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                clearError();
+              }}
               placeholder="••••••••"
-              className="h-11 w-full rounded-lg border border-input bg-card px-3 pr-11 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+              aria-invalid={invalid.password}
+              aria-describedby={error ? "login-error" : undefined}
+              className={`${inputClass} pr-12`}
             />
             <button
               type="button"
               onClick={() => setShowPw((v) => !v)}
               aria-label={showPw ? "Sembunyikan password" : "Tampilkan password"}
-              className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+              className="absolute right-1.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
         </div>
 
+        {error && (
+          <div
+            id="login-error"
+            role="alert"
+            className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive animate-in fade-in duration-200 motion-reduce:animate-none"
+          >
+            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <p>{error}</p>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:brightness-105 disabled:opacity-60"
+          className="font-display inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-lg font-bold text-primary-foreground shadow-[0_3px_0_0_#7a301d] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 active:translate-y-0.5 active:shadow-[0_1px_0_0_#7a301d] disabled:pointer-events-none disabled:opacity-70"
         >
           {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
           ) : (
-            <LogIn className="h-4 w-4" />
+            <LogIn className="h-5 w-5" aria-hidden="true" />
           )}
           {loading ? "Memproses…" : "Masuk"}
         </button>

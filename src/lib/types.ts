@@ -15,7 +15,15 @@ export type NotificationType =
   | "pengajuan_ditolak"
   | "ulasan_baru"
   | "pesanan_update"
-  | "umum";
+  | "umum"
+  | "stok_menipis"
+  | "produk_mendekati_batas"
+  | "produk_ditarik"
+  | "produk_disetujui"
+  | "produk_ditolak"
+  | "produk_disembunyikan"
+  | "libur_terdampak"
+  | "laporan_final";
 
 export interface User {
   id: number | string;
@@ -72,6 +80,8 @@ export interface Artisan {
   products?: Product[];
   productCount?: number;
   avgRating?: number;
+  creatorSharePercent?: number | null;
+  effectiveCreatorSharePercent?: number;
   user?: User;
 }
 
@@ -115,6 +125,10 @@ export interface Product {
   imageVariants?: { url: string; option: string; value: string }[];
   isLimited: boolean;
   isActive: boolean;
+  approvalStatus?: "menunggu" | "disetujui" | "ditolak";
+  displayStatus?: "menunggu" | "ditolak" | "ditarik" | "disembunyikan" | "aktif";
+  statusNote?: string | null;
+  withdrawnAt?: string | null;
   soldCount?: number;
   viewCount?: number;
   shopeeUrl?: string | null;
@@ -168,6 +182,8 @@ export interface Order {
   items: OrderItem[];
   payment?: Payment | null;
   user?: User;
+  affectedByHoliday?: boolean;
+  holidayInfo?: { weekly: boolean; reason: string } | null;
 }
 
 export interface Notification {
@@ -227,6 +243,8 @@ export interface AppSettings {
   refundWindowDays?: number;
   whatsappAdminNumber: string;
   notificationEmail: string;
+  lowStockThreshold?: number;
+  defaultCreatorSharePercent?: number;
   updatedAt: string;
 }
 

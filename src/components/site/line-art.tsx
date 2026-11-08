@@ -34,7 +34,7 @@ export function LogoHand({ className, stroke = "currentColor", strokeWidth = 2 }
   return (
     <svg
       viewBox="0 0 120 120"
-      fill="none"
+      fill={stroke}
       className={className}
       stroke={stroke}
       strokeWidth={strokeWidth}

@@ -29,6 +29,7 @@ import type {
   PickupSlot,
 } from "@/lib/types";
 import { ImpactDialog, SlotFormDialog } from "./SlotDialogs";
+import { HolidaySection } from "./HolidaySection";
 
 const SCHEDULE_URL = "/api/admin/pickup-schedule";
 const SLOTS_URL = "/api/admin/pickup-slots";
@@ -218,6 +219,8 @@ export function PickupScheduleContent() {
       )}
 
       <HoursCard settings={settings} onSaved={() => load(false)} />
+
+      <HolidaySection />
 
       <Card>
         <CardHeader className="flex flex-col gap-3 pb-4 sm:flex-row sm:items-start sm:justify-between">

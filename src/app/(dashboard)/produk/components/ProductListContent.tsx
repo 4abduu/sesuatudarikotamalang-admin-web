@@ -11,6 +11,8 @@ import { Product, Category, Artisan } from "@/lib/types";
 
 import { ProductToolbar } from "./ProductToolbar";
 import { ProductTable } from "./ProductTable";
+import { ProductActionReasonDialog } from "./ProductActionReasonDialog";
+import { AdjustStockDialog } from "./AdjustStockDialog";
 
 export function ProductListContent() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -23,6 +25,8 @@ export function ProductListContent() {
   const [categoryId, setCategoryId] = useState("all");
   const [artisanId, setArtisanId] = useState("all");
   const [togglingId, setTogglingId] = useState<number | string | null>(null);
+  const [hideTarget, setHideTarget] = useState<Product | null>(null);
+  const [stockTarget, setStockTarget] = useState<Product | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -53,6 +57,15 @@ export function ProductListContent() {
   }, [fetchData]);
 
   const handleToggleActive = async (id: number | string, currentStatus: boolean) => {
+    // Bila produk sedang aktif dan ingin dinonaktifkan (disembunyikan), minta alasan
+    if (currentStatus === true) {
+      const target = products.find((p) => String(p.id) === String(id));
+      if (target) {
+        setHideTarget(target);
+        return;
+      }
+    }
+
     const nextStatus = !currentStatus;
     setTogglingId(id);
     try {
@@ -158,10 +171,33 @@ export function ProductListContent() {
         <ProductTable
           products={filtered}
           onDeleteSuccess={handleDeleteSuccess}
+          onStockAdjusted={fetchData}
+          onAdjustStock={(p) => setStockTarget(p)}
           onToggleActive={handleToggleActive}
           togglingId={togglingId}
         />
       )}
+
+      <ProductActionReasonDialog
+        open={hideTarget !== null}
+        mode="hide"
+        productId={hideTarget?.id ?? null}
+        productName={hideTarget?.name ?? ""}
+        onClose={() => setHideTarget(null)}
+        onDone={() => {
+          setHideTarget(null);
+          void fetchData();
+        }}
+      />
+      <AdjustStockDialog
+        open={stockTarget !== null}
+        product={stockTarget}
+        onClose={() => setStockTarget(null)}
+        onDone={() => {
+          setStockTarget(null);
+          void fetchData();
+        }}
+      />
     </div>
   );
 }
