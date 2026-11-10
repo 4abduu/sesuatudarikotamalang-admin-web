@@ -17,6 +17,8 @@ import {
   Hourglass,
   FileBarChart,
   History,
+  ChevronDown,
+  ChevronRight,
   LogOut,
   Menu,
 } from "lucide-react";
@@ -25,11 +27,30 @@ import { useUserAuth } from "@/lib/user-auth";
 import { cn } from "@/lib/utils";
 import { LogoHand } from "@/components/site/line-art";
 
-const navItems = [
+type NavChild = {
+  href: string;
+  label: string;
+  Icon: React.FC<{ className?: string }>;
+};
+
+type NavItem = {
+  href?: string;
+  label: string;
+  Icon: React.FC<{ className?: string }>;
+  children?: NavChild[];
+};
+
+const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", Icon: LayoutDashboard },
-  { href: "/produk", label: "Produk", Icon: Package },
-  { href: "/produk/persetujuan", label: "Persetujuan Produk", Icon: ClipboardCheck },
-  { href: "/produk/lambat-laku", label: "Produk Lambat Laku", Icon: Hourglass },
+  {
+    label: "Produk",
+    Icon: Package,
+    children: [
+      { href: "/produk", label: "Kelola Produk", Icon: Package },
+      { href: "/produk/persetujuan", label: "Persetujuan Produk", Icon: ClipboardCheck },
+      { href: "/produk/lambat-laku", label: "Produk Lambat Laku", Icon: Hourglass },
+    ],
+  },
   { href: "/stok", label: "Riwayat Stok", Icon: History },
   { href: "/pesanan", label: "Pesanan", Icon: ShoppingCart },
   { href: "/scan-qr", label: "Scan QR", Icon: QrCode },
@@ -40,6 +61,11 @@ const navItems = [
   { href: "/laporan", label: "Laporan Bulanan", Icon: FileBarChart },
   { href: "/pengaturan", label: "Pengaturan", Icon: Settings },
 ];
+
+// Semua href (termasuk children) untuk cek spesifisitas isActive
+const allHrefs = navItems.flatMap((item) =>
+  item.children ? item.children.map((c) => c.href) : item.href ? [item.href] : [],
+);
 
 function AdminLogo() {
   return (
@@ -80,7 +106,7 @@ function NavLink({
         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
         active
           ? "bg-primary text-primary-foreground shadow-sm"
-        : "text-foreground/70 hover:bg-secondary hover:text-foreground",
+          : "text-foreground/70 hover:bg-secondary hover:text-foreground",
       )}
     >
       <Icon className="h-[18px] w-[18px]" />
@@ -96,13 +122,42 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const adminName = useUserAuth((s) => s.user?.name) ?? "Admin";
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  // Auto-expand "Produk" kalau route saat ini di bawah /produk
+  const isProductRoute = pathname.startsWith("/produk");
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(() =>
+    isProductRoute ? new Set(["Produk"]) : new Set(),
+  );
+
+  const toggleMenu = (label: string) => {
+    setExpandedMenus((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
+  // isActive untuk item flat (tanpa submenu)
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     if (!pathname.startsWith(href)) return false;
-    const moreSpecific = navItems.some(
-      (n) => n.href !== href && n.href.startsWith(`${href}/`) && pathname.startsWith(n.href)
+    const moreSpecific = allHrefs.some(
+      (h) => h !== href && h.startsWith(`${href}/`) && pathname.startsWith(h),
     );
     return !moreSpecific;
+  };
+
+  // isActive untuk child di dalam submenu
+  // "/produk" hanya aktif kalau exact match (bukan /produk/persetujuan)
+  const isChildActive = (href: string) => {
+    if (href === "/produk") return pathname === "/produk";
+    return pathname.startsWith(href);
+  };
+
+  // Cek apakah parent punya child yang aktif
+  const isParentActive = (item: NavItem) => {
+    if (!item.children) return false;
+    return item.children.some((child) => isChildActive(child.href));
   };
 
   const handleLogout = () => {
@@ -112,16 +167,69 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const navList = (
     <nav className="flex flex-col gap-1">
-      {navItems.map((item) => (
-        <NavLink
-          key={item.href}
-          href={item.href}
-          label={item.label}
-          Icon={item.Icon}
-          active={isActive(item.href)}
-          onClick={() => setMobileNavOpen(false)}
-        />
-      ))}
+      {navItems.map((item) => {
+        // Item dengan submenu (expandable)
+        if (item.children) {
+          const isExpanded = expandedMenus.has(item.label);
+          const parentActive = isParentActive(item);
+          return (
+            <div key={item.label}>
+              <button
+                onClick={() => toggleMenu(item.label)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  parentActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground/70 hover:bg-secondary hover:text-foreground",
+                )}
+              >
+                <item.Icon className="h-[18px] w-[18px]" />
+                <span className="flex-1 text-left">{item.label}</span>
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 shrink-0" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 shrink-0" />
+                )}
+              </button>
+              {isExpanded && (
+                <div className="ml-4 mt-0.5 flex flex-col gap-0.5 border-l border-border/80 pl-3">
+                  {item.children.map((child) => {
+                    const childActive = isChildActive(child.href);
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        onClick={() => setMobileNavOpen(false)}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
+                          childActive
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-foreground/60 hover:bg-secondary hover:text-foreground",
+                        )}
+                      >
+                        <child.Icon className="h-4 w-4 shrink-0" />
+                        {child.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // Item flat (tanpa submenu)
+        return (
+          <NavLink
+            key={item.label}
+            href={item.href!}
+            label={item.label}
+            Icon={item.Icon}
+            active={isActive(item.href!)}
+            onClick={() => setMobileNavOpen(false)}
+          />
+        );
+      })}
     </nav>
   );
 
@@ -133,15 +241,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <AdminLogo />
         </div>
         <div className="flex-1 overflow-y-auto p-3">{navList}</div>
-        {/* <div className="border-t border-border/80 p-3">
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/75 transition-colors hover:bg-secondary hover:text-foreground"
-          >
-            <Store className="h-[18px] w-[18px]" />
-            Lihat Toko
-          </Link>
-        </div> */}
       </aside>
 
       {/* Mobile sidebar (Sheet) */}
