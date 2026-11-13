@@ -129,6 +129,9 @@ export interface Product {
   displayStatus?: "menunggu" | "ditolak" | "ditarik" | "disembunyikan" | "aktif";
   statusNote?: string | null;
   withdrawnAt?: string | null;
+  replacesProductId?: number | string | null;
+  replacesProduct?: { id: number | string; name: string } | null;
+  replacedByProductId?: number | string | null;
   soldCount?: number;
   viewCount?: number;
   shopeeUrl?: string | null;

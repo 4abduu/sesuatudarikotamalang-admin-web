@@ -23,6 +23,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { ApiError, apiFetch } from "@/lib/api";
 import { RemoveAvatarDialog } from "./RemoveAvatarDialog";
+import { PaginationBar } from "@/components/shared/PaginationBar";
 
 export interface AdminUser {
   id: string;
@@ -196,32 +197,14 @@ export function UserListContent() {
         </ul>
       )}
 
-      {!loading && !error && totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            Halaman {page} dari {totalPages} ({total} pengguna)
-          </span>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Sebelumnya
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            >
-              Berikutnya
-            </Button>
-          </div>
-        </div>
+      {!loading && !error && total > 0 && (
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={LIMIT}
+          onPageChange={setPage}
+        />
       )}
 
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>

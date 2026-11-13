@@ -7,9 +7,12 @@ export const metadata: Metadata = {
 
 export default async function ProductEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { id } = await params;
-  return <ProductEditContent productId={id} />;
+  const { from } = await searchParams;
+  return <ProductEditContent productId={id} from={from} />;
 }

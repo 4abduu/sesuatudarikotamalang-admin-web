@@ -119,6 +119,16 @@ export const emptyInitialValues: ProductFormInitialValues = {
 type Errors = {
   name?: string;
   price?: string;
+  photo?: string;
+};
+
+export type ProductApprovalProps = {
+  status: "menunggu" | "ditolak" | "disetujui";
+  onApprove: () => Promise<void>;
+  onSaveAndApprove: (values: ProductFormInitialValues, extras?: ProductFormExtras) => Promise<void>;
+  onReject: () => void;
+  busy?: boolean;
+  backHref: string;
 };
 
 export function ProductFormFields({
@@ -127,12 +137,16 @@ export function ProductFormFields({
   submitting = false,
   onSubmit,
   mode = "create",
+  approval,
+  rejectedPhotoIds,
 }: {
   initialValues: ProductFormInitialValues;
   submitLabel: string;
   submitting?: boolean;
   onSubmit: (values: ProductFormInitialValues, extras?: ProductFormExtras) => void; // [PATCH-3]
   mode?: "create" | "edit";
+  approval?: ProductApprovalProps;
+  rejectedPhotoIds?: Set<string>;
 }) {
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -170,6 +184,40 @@ export function ProductFormFields({
   const [processItems, setProcessItems] = useState<PhotoItem[]>(initialProcessItems);
 
   const [errors, setErrors] = useState<Errors>({});
+
+  const isDirty = useMemo(() => {
+    if (name !== initialValues.name) return true;
+    if (categoryId !== initialValues.categoryId) return true;
+    if (price !== initialValues.price) return true;
+    if (shortDesc !== initialValues.shortDesc) return true;
+    if (description !== initialValues.description) return true;
+    if (limited !== initialValues.limited) return true;
+    if (singleStock !== initialValues.singleStock) return true;
+    if (hasStory !== initialValues.hasStory) return true;
+    if (storyTitle !== initialValues.story.title) return true;
+    if (storyBody !== initialValues.story.body) return true;
+    if (storyProcess !== initialValues.story.process) return true;
+    if (!photoListsEqual(photoItems, initialPhotoItems)) return true;
+    if (!photoListsEqual(processItems, initialProcessItems)) return true;
+    return false;
+  }, [
+    name,
+    categoryId,
+    price,
+    shortDesc,
+    description,
+    limited,
+    singleStock,
+    hasStory,
+    storyTitle,
+    storyBody,
+    storyProcess,
+    photoItems,
+    initialPhotoItems,
+    processItems,
+    initialProcessItems,
+    initialValues,
+  ]);
 
   function addOption() {
     if (variantOptions.length >= 3) return;
@@ -277,6 +325,8 @@ export function ProductFormFields({
     if (!name.trim()) next.name = "Nama produk wajib diisi";
     if (!price.trim() || Number(price) <= 0)
       next.price = "Harga wajib diisi";
+    if (photoItems.length === 0)
+      next.photo = "Minimal 1 foto produk";
     setErrors(next);
     if (Object.keys(next).length > 0) {
       toast.error("Lengkapi isian yang wajib diisi");
@@ -442,14 +492,25 @@ export function ProductFormFields({
         <CardContent>
           <PhotoManager
             items={photoItems}
-            onChange={setPhotoItems}
+            onChange={(next) => {
+              setPhotoItems(next);
+              if (next.length > 0 && errors.photo) {
+                setErrors((prev) => ({ ...prev, photo: undefined }));
+              }
+            }}
             max={10}
             inputId="product-photos-input"
             label="Foto produk"
             variantChoices={variantChoices}
             dirty={!photoListsEqual(photoItems, initialPhotoItems)}
             onReset={resetPhotos}
+            rejectedIds={rejectedPhotoIds}
           />
+          {errors.photo && (
+            <p className="mt-2 text-xs font-medium text-destructive">
+              {errors.photo}
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -687,24 +748,122 @@ export function ProductFormFields({
 
       {/* ===== Sticky action bar ===== */}
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-col-reverse items-stretch gap-3 border-t border-border bg-card/95 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-end md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => router.push("/produk")}
-          className="gap-1.5"
-          disabled={submitting}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Batal
-        </Button>
-        <Button type="submit" className="gap-2" disabled={submitting}>
-          {submitting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          {submitLabel}
-        </Button>
+        {mode === "edit" && approval ? (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => router.push(approval.backHref)}
+              className="gap-1.5"
+              disabled={submitting || approval.busy}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Kembali
+            </Button>
+
+            {approval.status === "menunggu" && (
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10"
+                onClick={approval.onReject}
+                disabled={submitting || approval.busy}
+              >
+                <X className="h-4 w-4" />
+                Tolak
+              </Button>
+            )}
+
+            <Button
+              type="submit"
+              variant="outline"
+              className="gap-2"
+              disabled={submitting || approval.busy}
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Simpan
+            </Button>
+
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={submitting || approval.busy}
+              onClick={async () => {
+                if (isDirty) {
+                  const next: Errors = {};
+                  if (!name.trim()) next.name = "Nama produk wajib diisi";
+                  if (!price.trim() || Number(price) <= 0) next.price = "Harga wajib diisi";
+                  if (photoItems.length === 0) next.photo = "Minimal 1 foto produk";
+                  setErrors(next);
+                  if (Object.keys(next).length > 0) {
+                    toast.error("Lengkapi isian yang wajib diisi");
+                    return;
+                  }
+                  await approval.onSaveAndApprove(
+                    {
+                      name,
+                      categoryId,
+                      price,
+                      shortDesc,
+                      description,
+                      limited,
+                      shopeeUrl: initialValues.shopeeUrl,
+                      singleStock,
+                      variantOptions,
+                      variantStocks,
+                      variantIds: initialValues.variantIds,
+                      hasStory,
+                      story: { title: storyTitle, body: storyBody, process: storyProcess },
+                      existingImages: initialValues.existingImages,
+                      initialImageVariants: initialValues.initialImageVariants,
+                      existingProcessImages: initialValues.existingProcessImages,
+                    },
+                    {
+                      photoItems,
+                      processItems,
+                      initialPhotoItems,
+                      initialProcessItems,
+                    }
+                  );
+                } else {
+                  await approval.onApprove();
+                }
+              }}
+            >
+              {approval.busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              {isDirty ? "Simpan & Setujui" : "Setujui"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => router.push("/produk")}
+              className="gap-1.5"
+              disabled={submitting}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Batal
+            </Button>
+            <Button type="submit" className="gap-2" disabled={submitting}>
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {submitLabel}
+            </Button>
+          </>
+        )}
       </div>
     </form>
   );

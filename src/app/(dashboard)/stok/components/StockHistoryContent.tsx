@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, History, Loader2, RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, History, Loader2, RefreshCw, Search } from "lucide-react";
 import { EmptyState } from "@/app/(dashboard)/components/admin-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiFetch, ApiError } from "@/lib/api";
 import { formatDateTimeId, variantText } from "@/lib/format-operasional";
+import { PaginationBar } from "@/components/shared/PaginationBar";
 import {
   STOCK_REASON_LABEL,
   type StockMovement,
@@ -185,34 +186,14 @@ export function StockHistoryContent() {
         </div>
       )}
 
-      {!loading && !error && total > PAGE_SIZE && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Halaman {page} dari {totalPages} ({total} catatan)
-          </p>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Sebelumnya
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            >
-              Berikutnya
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+      {!loading && !error && total > 0 && (
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
       )}
     </div>
   );

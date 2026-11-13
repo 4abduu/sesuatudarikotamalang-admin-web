@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   title: "Sesuatu DariKota Malang — Oleh-Oleh Artisan Kayutangan Heritage",
   description:
     "Toko oleh-oleh artisan & creative market di kawasan Kayutangan Heritage, Malang. Postcard, pin enamel, kriya kayu, tote bag, dan karya kreatif lokal lainnya.",
+  robots: {
+    index: false,
+    follow: false,
+  },
   keywords: [
     "Malang",
     "Kayutangan",

@@ -50,6 +50,7 @@ export function AdminTambahProdukContent() {
   const [loadingSellers, setLoadingSellers] = useState(true);
   const [sellerError, setSellerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [rejectedPhotoIds, setRejectedPhotoIds] = useState<Set<string>>(new Set());
 
   const loadSellers = useCallback(async () => {
     setLoadingSellers(true);
@@ -132,8 +133,24 @@ export function AdminTambahProdukContent() {
     let syncProduct: PhotoSyncResult;
     try {
       syncProduct = await syncPhotos(photoItems);
+      setRejectedPhotoIds(new Set());
     } catch (err) {
       setSubmitting(false);
+      if (err instanceof ApiError && err.code === "IMAGE_REJECTED") {
+        const rejectedIdxs = (err.data as { rejectedIndexes?: number[] })?.rejectedIndexes ?? [];
+        const freshItems = photoItems.filter((i) => !!i.file);
+        const rejected = new Set<string>();
+        rejectedIdxs.forEach((idx) => {
+          if (freshItems[idx]) rejected.add(freshItems[idx].id);
+        });
+        setRejectedPhotoIds(rejected);
+        toast.error("Ada foto yang tidak pantas. Hapus foto bertanda merah lalu coba lagi.");
+        return;
+      }
+      if (err instanceof ApiError && err.status === 503) {
+        toast.error("Pemeriksaan foto sedang tidak tersedia. Coba lagi nanti.");
+        return;
+      }
       toast.error(err instanceof ApiError ? err.message : "Foto gagal diunggah. Coba lagi.");
       return;
     }
@@ -294,6 +311,7 @@ export function AdminTambahProdukContent() {
         submitLabel={submitting ? "Menyimpan…" : "Simpan Produk"}
         submitting={submitting}
         onSubmit={handleSubmit}
+        rejectedPhotoIds={rejectedPhotoIds}
       />
     </div>
   );

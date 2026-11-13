@@ -10,6 +10,14 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
+
+  get requestId(): string | undefined {
+    if (this.data && typeof this.data === "object" && "requestId" in this.data) {
+      const id = (this.data as { requestId?: unknown }).requestId;
+      return typeof id === "string" ? id : undefined;
+    }
+    return undefined;
+  }
 }
 
 export async function apiFetch<T = unknown>(
@@ -41,11 +49,17 @@ export async function apiFetch<T = unknown>(
   }
 
   if (!res.ok) {
-    const msg =
-      data.error ||
-      (res.status >= 500
-        ? "Terjadi kesalahan pada server"
-        : "Request gagal");
+    let msg = data.error;
+    if (!msg) {
+      if (res.status >= 500) {
+        const reqId = typeof data.requestId === "string" ? data.requestId : undefined;
+        msg = reqId
+          ? `Terjadi kesalahan pada server. Kode: ${reqId}`
+          : "Terjadi kesalahan pada server.";
+      } else {
+        msg = "Request gagal";
+      }
+    }
     throw new ApiError(res.status, msg, data.code, data);
   }
 

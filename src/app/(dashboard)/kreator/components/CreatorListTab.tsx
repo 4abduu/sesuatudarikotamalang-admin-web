@@ -24,6 +24,8 @@ import { Artisan } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { RemoveAvatarDialog } from "@/app/(dashboard)/pengguna/components/RemoveAvatarDialog";
 import { EditCreatorShareDialog } from "./EditCreatorShareDialog";
+import { useClientPagination } from "@/hooks/useClientPagination";
+import { PaginationBar } from "@/components/shared/PaginationBar";
 
 interface CreatorListTabProps {
   artisans: Artisan[];
@@ -37,6 +39,18 @@ export function CreatorListTab({ artisans, onStatusUpdated, defaultCreatorShareP
   const [togglingId, setTogglingId] = useState<number | string | null>(null);
   const [removingPhoto, setRemovingPhoto] = useState<Artisan | null>(null);
   const [shareTarget, setShareTarget] = useState<Artisan | null>(null);
+
+  const {
+    pageItems,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    total,
+    totalPages,
+  } = useClientPagination(artisans, {
+    pageSize: 10,
+  });
 
   const handleToggleStatus = async (artisan: Artisan) => {
     const isCurrentlyActive = artisan.status === "aktif";
@@ -72,8 +86,9 @@ export function CreatorListTab({ artisans, onStatusUpdated, defaultCreatorShareP
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {artisans.map((c) => {
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {pageItems.map((c) => {
         const isInactive = c.status === "nonaktif";
         const isToggling = togglingId === c.id;
 
@@ -227,6 +242,17 @@ export function CreatorListTab({ artisans, onStatusUpdated, defaultCreatorShareP
           </Card>
         );
       })}
+      </div>
+
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        pageSizeOptions={[10, 20, 50]}
+      />
 
       {removingPhoto && (
         <RemoveAvatarDialog

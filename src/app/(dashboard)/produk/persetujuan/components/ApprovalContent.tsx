@@ -13,6 +13,8 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { formatRupiah } from "@/lib/format";
 import { formatDateTimeId } from "@/lib/format-operasional";
 import type { ApprovalProduct } from "@/lib/types-operasional";
+import { useClientPagination } from "@/hooks/useClientPagination";
+import { PaginationBar } from "@/components/shared/PaginationBar";
 import { ProductActionReasonDialog } from "../../components/ProductActionReasonDialog";
 
 type StatusFilter = "menunggu" | "ditolak";
@@ -24,6 +26,19 @@ export function ApprovalContent() {
   const [error, setError] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<ApprovalProduct | null>(null);
+
+  const {
+    pageItems,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    total,
+    totalPages,
+  } = useClientPagination(products, {
+    pageSize: 10,
+    resetKey: status,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,9 +118,10 @@ export function ApprovalContent() {
           />
         </Card>
       ) : (
-        <div className="space-y-3">
-          {products.map((p) => (
-            <Card key={p.id} className="p-4">
+        <div className="space-y-4">
+          <div className="space-y-3">
+            {pageItems.map((p) => (
+              <Card key={p.id} className="p-4">
               <div className="flex flex-col gap-4 sm:flex-row">
                 {p.images?.[0] ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -161,7 +177,7 @@ export function ApprovalContent() {
 
                 <div className="flex shrink-0 flex-row gap-2 sm:flex-col">
                   <Button asChild variant="outline" size="sm">
-                    <Link href={`/produk/${p.id}/edit`}>Lihat Detail</Link>
+                    <Link href={`/produk/${p.id}/edit?from=persetujuan`}>Lihat Detail</Link>
                   </Button>
                   {p.displayStatus === "menunggu" && (
                     <>
@@ -194,7 +210,17 @@ export function ApprovalContent() {
             </Card>
           ))}
         </div>
-      )}
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 20, 50]}
+        />
+      </div>
+    )}
 
       <ProductActionReasonDialog
         open={rejectTarget !== null}

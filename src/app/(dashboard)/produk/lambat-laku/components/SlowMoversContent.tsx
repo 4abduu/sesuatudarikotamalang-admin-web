@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { apiFetch, ApiError } from "@/lib/api";
 import { formatDateId, formatRupiah } from "@/lib/format";
 import type { SlowMoverProduct, SlowMoversResponse } from "@/lib/types-operasional";
+import { useClientPagination } from "@/hooks/useClientPagination";
+import { PaginationBar } from "@/components/shared/PaginationBar";
 import { ProductActionReasonDialog } from "../../components/ProductActionReasonDialog";
 
 type LevelFilter = "all" | "peringatan" | "tarik";
@@ -50,6 +52,19 @@ export function SlowMoversContent() {
     const list = data?.products ?? [];
     return level === "all" ? list : list.filter((p) => p.level === level);
   }, [data, level]);
+
+  const {
+    pageItems,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    total,
+    totalPages,
+  } = useClientPagination(rows, {
+    pageSize: 10,
+    resetKey: level,
+  });
 
   if (loading) {
     return (
@@ -122,7 +137,7 @@ export function SlowMoversContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((p) => (
+              {pageItems.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
                     <p className="font-semibold">{p.name}</p>
@@ -154,6 +169,15 @@ export function SlowMoversContent() {
               ))}
             </TableBody>
           </Table>
+          <PaginationBar
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 20, 50]}
+          />
         </div>
       )}
 

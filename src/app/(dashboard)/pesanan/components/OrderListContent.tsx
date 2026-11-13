@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { ShoppingCart, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { EmptyState } from "@/app/(dashboard)/components/admin-ui";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Order, Artisan } from "@/lib/types";
+import { PaginationBar } from "@/components/shared/PaginationBar";
 
 import { OrderToolbar, ALL_STATUS, ALL_REFUND, ALL_ARTISAN } from "./OrderToolbar";
 import { OrderTable } from "./OrderTable";
@@ -18,22 +19,75 @@ export function OrderListContent() {
   const [error, setError] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState(ALL_STATUS);
   const [refundFilter, setRefundFilter] = useState(ALL_REFUND);
   const [artisanFilter, setArtisanFilter] = useState(ALL_ARTISAN);
   const [dateFilter, setDateFilter] = useState("");
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Debounce search query ±400ms
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [query]);
+
+  // Load artisans sekali
+  useEffect(() => {
+    apiFetch<{ artisans: Artisan[] }>("/api/admin/artisans?status=aktif")
+      .then((res) => setArtisans(res.artisans || []))
+      .catch(() => setArtisans([]));
+  }, []);
+
   const fetchOrders = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
+
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("limit", String(pageSize));
+
+    if (debouncedQuery.trim()) params.set("search", debouncedQuery.trim());
+    if (statusFilter !== ALL_STATUS) params.set("status", statusFilter);
+    if (refundFilter !== ALL_REFUND) params.set("refundStatus", refundFilter);
+    if (artisanFilter !== ALL_ARTISAN) params.set("artisanId", String(artisanFilter));
+    if (dateFilter) params.set("pickupDate", dateFilter);
+
     try {
-      const [orderRes, artRes] = await Promise.all([
-        apiFetch<{ orders: Order[] }>("/api/admin/orders"),
-        apiFetch<{ artisans: Artisan[] }>("/api/admin/artisans?status=aktif").catch(() => ({ artisans: [] })),
-      ]);
-      setOrders(orderRes.orders || []);
-      setArtisans(artRes.artisans || []);
+      const res = await apiFetch<{
+        orders: Order[];
+        pagination?: { page: number; limit: number; total: number; totalPages: number };
+      }>(`/api/admin/orders?${params.toString()}`, {
+        signal: controller.signal,
+      });
+
+      setOrders(res.orders || []);
+      if (res.pagination) {
+        setTotal(res.pagination.total);
+        setTotalPages(res.pagination.totalPages);
+      } else {
+        setTotal(res.orders?.length || 0);
+        setTotalPages(1);
+      }
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
@@ -42,10 +96,10 @@ export function OrderListContent() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, pageSize, debouncedQuery, statusFilter, refundFilter, artisanFilter, dateFilter]);
 
   useEffect(() => {
-    fetchOrders();
+    void fetchOrders();
   }, [fetchOrders]);
 
   const hasActiveFilter =
@@ -61,39 +115,11 @@ export function OrderListContent() {
     setArtisanFilter(ALL_ARTISAN);
     setDateFilter("");
     setQuery("");
+    setDebouncedQuery("");
+    setPage(1);
   };
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return orders.filter((o) => {
-      if (statusFilter !== ALL_STATUS && o.status !== statusFilter) {
-        return false;
-      }
-      if (refundFilter !== ALL_REFUND && o.refundStatus !== refundFilter) {
-        return false;
-      }
-      if (artisanFilter !== ALL_ARTISAN) {
-        const hasArtisanItem = o.items?.some((item) => {
-          const artId = String(item.product?.artisanId ?? item.product?.artisan?.id ?? "");
-          return artId === String(artisanFilter);
-        });
-        if (!hasArtisanItem) return false;
-      }
-      if (dateFilter) {
-        const orderDateStr = o.pickupDate ? o.pickupDate.split("T")[0] : "";
-        if (orderDateStr !== dateFilter) return false;
-      }
-      if (q) {
-        const orderNoMatch = (o.orderNumber || "").toLowerCase().includes(q);
-        const buyerMatch = (o.user?.name || "").toLowerCase().includes(q);
-        const emailMatch = (o.user?.email || "").toLowerCase().includes(q);
-        if (!orderNoMatch && !buyerMatch && !emailMatch) return false;
-      }
-      return true;
-    });
-  }, [orders, statusFilter, refundFilter, artisanFilter, dateFilter, query]);
-
-  if (loading) {
+  if (loading && orders.length === 0) {
     return (
       <div className="grid min-h-[350px] place-items-center rounded-xl border border-border bg-card p-12">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
@@ -104,7 +130,7 @@ export function OrderListContent() {
     );
   }
 
-  if (error) {
+  if (error && orders.length === 0) {
     return (
       <div className="grid min-h-[300px] place-items-center rounded-xl border border-destructive/30 bg-destructive/5 p-12 text-center">
         <div className="flex flex-col items-center gap-4 max-w-md">
@@ -127,33 +153,36 @@ export function OrderListContent() {
       {/* Toolbar Filter */}
       <OrderToolbar
         query={query}
-        onQueryChange={setQuery}
+        onQueryChange={(q) => {
+          setQuery(q);
+        }}
         statusFilter={statusFilter}
-        onStatusChange={setStatusFilter}
+        onStatusChange={(s) => {
+          setStatusFilter(s);
+          setPage(1);
+        }}
         refundFilter={refundFilter}
-        onRefundChange={setRefundFilter}
+        onRefundChange={(r) => {
+          setRefundFilter(r);
+          setPage(1);
+        }}
         artisanFilter={artisanFilter}
-        onArtisanChange={setArtisanFilter}
+        onArtisanChange={(a) => {
+          setArtisanFilter(a);
+          setPage(1);
+        }}
         artisans={artisans}
         dateFilter={dateFilter}
-        onDateChange={setDateFilter}
+        onDateChange={(d) => {
+          setDateFilter(d);
+          setPage(1);
+        }}
         onReset={handleResetFilters}
         hasActiveFilter={hasActiveFilter}
       />
 
-      {/* Result Count Info */}
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Menampilkan{" "}
-          <span className="font-semibold text-foreground">{filtered.length}</span>{" "}
-          dari{" "}
-          <span className="font-semibold text-foreground">{orders.length}</span>{" "}
-          pesanan
-        </p>
-      </div>
-
       {/* List / Table Pesanan */}
-      {filtered.length === 0 ? (
+      {orders.length === 0 ? (
         <Card>
           <CardContent className="p-0">
             <EmptyState
@@ -164,7 +193,18 @@ export function OrderListContent() {
           </CardContent>
         </Card>
       ) : (
-        <OrderTable orders={filtered} />
+        <div className="space-y-4">
+          <OrderTable orders={orders} />
+          <PaginationBar
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 20, 50]}
+          />
+        </div>
       )}
     </div>
   );

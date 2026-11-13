@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AppStatusBadge } from "@/app/(dashboard)/components/admin-ui";
 import { ArtisanApplication } from "@/lib/types";
+import { useClientPagination } from "@/hooks/useClientPagination";
+import { PaginationBar } from "@/components/shared/PaginationBar";
 
 interface ApplicationListTabProps {
   applications: ArtisanApplication[];
@@ -20,6 +22,18 @@ function formatDateID(iso: string) {
 }
 
 export function ApplicationListTab({ applications }: ApplicationListTabProps) {
+  const {
+    pageItems,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    total,
+    totalPages,
+  } = useClientPagination(applications, {
+    pageSize: 10,
+  });
+
   if (applications.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
@@ -29,8 +43,9 @@ export function ApplicationListTab({ applications }: ApplicationListTabProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {applications.map((app) => {
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {pageItems.map((app) => {
         const photos = app.samplePhotos ?? (app.sampleFileUrl ? [app.sampleFileUrl] : []);
         const displayPhotos = photos.slice(0, 5);
         const remaining = photos.length - 5;
@@ -96,6 +111,17 @@ export function ApplicationListTab({ applications }: ApplicationListTabProps) {
           </Card>
         );
       })}
+      </div>
+
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        pageSizeOptions={[10, 20, 50]}
+      />
     </div>
   );
 }

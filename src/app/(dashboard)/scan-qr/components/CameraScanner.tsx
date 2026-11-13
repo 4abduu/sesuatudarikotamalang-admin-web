@@ -120,9 +120,13 @@ export function CameraScanner({
     return result?.data || null;
   }, []);
 
+  const tickRef = useRef<((timestamp: number) => void) | null>(null);
+
   const tick = useCallback(
     (timestamp: number) => {
-      rafRef.current = requestAnimationFrame(tick);
+      if (tickRef.current) {
+        rafRef.current = requestAnimationFrame(tickRef.current);
+      }
       if (timestamp - lastTickRef.current < SCAN_INTERVAL_MS) return;
       lastTickRef.current = timestamp;
 
@@ -149,6 +153,10 @@ export function CameraScanner({
     },
     [decodeFrame]
   );
+
+  useEffect(() => {
+    tickRef.current = tick;
+  }, [tick]);
 
   const startCamera = useCallback(async () => {
     // Cegah sesi ganda: jangan membuat getUserMedia baru bila sesi lama masih ada.

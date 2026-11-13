@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/app/(dashboard)/components/admin-ui";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ProductActionReasonDialog } from "@/app/(dashboard)/produk/components/ProductActionReasonDialog";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Product } from "@/lib/types";
@@ -29,7 +31,13 @@ import {
 /* ─────────────────────────────────────────────────────────────────────── *
  *  ProductEditContent — fetch produk dari API lalu tampilkan form edit
  * ─────────────────────────────────────────────────────────────────────── */
-export function ProductEditContent({ productId }: { productId: string }) {
+export function ProductEditContent({
+  productId,
+  from,
+}: {
+  productId: string;
+  from?: string;
+}) {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,15 +46,11 @@ export function ProductEditContent({ productId }: { productId: string }) {
     setLoading(true);
     setError(null);
     try {
-      // Admin bisa akses produk nonaktif via GET /api/admin/products,
-      // tapi GET /api/products/:id hanya mengembalikan produk aktif.
-      // Kita gunakan /api/admin/products lalu filter by id.
-      const res = await apiFetch<{ products: Product[] }>("/api/admin/products");
-      const found = res.products.find((p) => String(p.id) === String(productId));
-      if (!found) {
+      const res = await apiFetch<{ product: Product }>(`/api/admin/products/${productId}`);
+      if (!res.product) {
         setError("Produk tidak ditemukan");
       } else {
-        setProduct(found);
+        setProduct(res.product);
       }
     } catch (err) {
       setError(
@@ -91,7 +95,9 @@ export function ProductEditContent({ productId }: { productId: string }) {
               Coba Lagi
             </Button>
             <Button asChild variant="ghost">
-              <Link href="/produk">Kembali ke Daftar</Link>
+              <Link href={from === "persetujuan" ? "/produk/persetujuan" : "/produk"}>
+                {from === "persetujuan" ? "Kembali ke Persetujuan" : "Kembali ke Daftar"}
+              </Link>
             </Button>
           </div>
         </div>
@@ -99,16 +105,28 @@ export function ProductEditContent({ productId }: { productId: string }) {
     );
   }
 
-  return <ProductEditForm product={product} />;
+  return <ProductEditForm product={product} from={from} onReload={fetchProduct} />;
 }
 
 /* ─────────────────────────────────────────────────────────────────────── *
  *  ProductEditForm — form edit terhubung ke PUT /api/products/:id
  * ─────────────────────────────────────────────────────────────────────── */
-function ProductEditForm({ product }: { product: Product }) {
+function ProductEditForm({
+  product,
+  from,
+  onReload,
+}: {
+  product: Product;
+  from?: string;
+  onReload: () => Promise<void>;
+}) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectedPhotoIds, setRejectedPhotoIds] = useState<Set<string>>(new Set());
+
+  const backHref = from === "persetujuan" ? "/produk/persetujuan" : "/produk";
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -172,10 +190,14 @@ function ProductEditForm({ product }: { product: Product }) {
     existingProcessImages: product.story?.processImages ?? [],
   };
 
-  const handleSubmit = async (
+  /**
+   * Logika penyimpanan utama.
+   * Mengembalikan boolean true jika sukses, false jika gagal.
+   */
+  const executeSave = async (
     values: ProductFormInitialValues,
-    extras?: ProductFormExtras,
-  ) => {
+    extras?: ProductFormExtras
+  ): Promise<boolean> => {
     const photoItems = extras?.photoItems ?? [];
     const initialPhotoItems = extras?.initialPhotoItems ?? [];
     const processItems = extras?.processItems ?? [];
@@ -183,15 +205,15 @@ function ProductEditForm({ product }: { product: Product }) {
 
     if (photoItems.length === 0) {
       toast.error("Produk harus punya minimal satu foto");
-      return;
+      return false;
     }
     if (photoItems.length > 10) {
       toast.error("Foto produk maksimal 10");
-      return;
+      return false;
     }
     if (values.hasStory && processItems.length > 10) {
       toast.error("Foto proses cerita maksimal 10");
-      return;
+      return false;
     }
 
     const photosChanged = !photoListsEqual(photoItems, initialPhotoItems);
@@ -202,10 +224,26 @@ function ProductEditForm({ product }: { product: Product }) {
     if (photosChanged) {
       try {
         syncProduct = await syncPhotos(photoItems);
+        setRejectedPhotoIds(new Set());
       } catch (err) {
         setSubmitting(false);
+        if (err instanceof ApiError && err.code === "IMAGE_REJECTED") {
+          const rejectedIdxs = (err.data as { rejectedIndexes?: number[] })?.rejectedIndexes ?? [];
+          const freshItems = photoItems.filter((i) => !!i.file);
+          const rejected = new Set<string>();
+          rejectedIdxs.forEach((idx) => {
+            if (freshItems[idx]) rejected.add(freshItems[idx].id);
+          });
+          setRejectedPhotoIds(rejected);
+          toast.error("Ada foto yang tidak pantas. Hapus foto bertanda merah lalu coba lagi.");
+          return false;
+        }
+        if (err instanceof ApiError && err.status === 503) {
+          toast.error("Pemeriksaan foto sedang tidak tersedia. Coba lagi nanti.");
+          return false;
+        }
         toast.error(err instanceof ApiError ? err.message : "Foto gagal diunggah. Coba lagi.");
-        return;
+        return false;
       }
     }
 
@@ -246,7 +284,7 @@ function ProductEditForm({ product }: { product: Product }) {
       setSubmitting(false);
       const msg = err instanceof ApiError ? err.message : "Gagal menyimpan produk";
       toast.error("Gagal menyimpan", { description: msg });
-      return;
+      return false;
     }
 
     // Simpan cerita (POST /api/products/:id/story) jika aktif
@@ -261,8 +299,7 @@ function ProductEditForm({ product }: { product: Product }) {
           });
           setIsDirty(false);
           setSubmitting(false);
-          router.push("/produk");
-          return;
+          return true;
         }
       }
 
@@ -289,28 +326,122 @@ function ProductEditForm({ product }: { product: Product }) {
         });
         setIsDirty(false);
         setSubmitting(false);
-        router.push("/produk");
-        return;
+        return true;
       }
     }
 
     setIsDirty(false);
     setSubmitting(false);
-    toast.success("Produk berhasil diperbarui", {
-      description: `${values.name} telah disimpan.`,
-    });
-    router.push("/produk");
+    return true;
+  };
+
+  const handleRegularSubmit = async (
+    values: ProductFormInitialValues,
+    extras?: ProductFormExtras,
+  ) => {
+    const ok = await executeSave(values, extras);
+    if (ok) {
+      toast.success("Produk berhasil diperbarui", {
+        description: `${values.name} telah disimpan.`,
+      });
+      if (from === "persetujuan") {
+        await onReload();
+      } else {
+        router.push("/produk");
+      }
+    }
+  };
+
+  const handleApproveOnly = async () => {
+    if (!product.images || product.images.length === 0) {
+      toast.error("Minimal 1 foto produk");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await apiFetch<{ message?: string }>(`/api/admin/products/${product.id}/approve`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      toast.success(res.message || "Produk disetujui");
+      router.push(backHref);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Gagal menyetujui produk");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveAndApprove = async (
+    values: ProductFormInitialValues,
+    extras?: ProductFormExtras
+  ) => {
+    const saveOk = await executeSave(values, extras);
+    if (!saveOk) return;
+
+    setSubmitting(true);
+    try {
+      const res = await apiFetch<{ message?: string }>(`/api/admin/products/${product.id}/approve`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      toast.success(res.message || "Produk berhasil disimpan dan disetujui");
+      router.push(backHref);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Gagal menyetujui";
+      toast.error(`Perubahan tersimpan, tetapi persetujuan gagal: ${msg}`);
+      await onReload();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const approvalStatus = product.approvalStatus ?? "disetujui";
+  const approvalProps = {
+    status: approvalStatus,
+    onApprove: handleApproveOnly,
+    onSaveAndApprove: handleSaveAndApprove,
+    onReject: () => setRejectOpen(true),
+    busy: submitting,
+    backHref,
   };
 
   return (
     <div>
       <Link
-        href="/produk"
+        href={backHref}
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
-        Kembali ke daftar produk
+        {from === "persetujuan" ? "Kembali ke persetujuan produk" : "Kembali ke daftar produk"}
       </Link>
+
+      {/* Banner status */}
+      {approvalStatus === "menunggu" && (
+        <Alert className="mb-6 border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertTitle className="font-semibold">Pengajuan menunggu persetujuan</AlertTitle>
+          <AlertDescription className="text-sm mt-1">
+            Kreator: <strong>{product.artisan?.brandName || "Kreator"}</strong>
+            {product.replacesProduct && (
+              <span className="block mt-0.5">
+                Pengganti dari produk: <strong>{product.replacesProduct.name}</strong>
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {approvalStatus === "ditolak" && (
+        <Alert className="mb-6 border-destructive/30 bg-destructive/10 text-destructive">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <AlertTitle className="font-semibold">Produk ini telah ditolak</AlertTitle>
+          <AlertDescription className="text-sm mt-1">
+            {product.statusNote ? `Alasan penolakan: ${product.statusNote}` : "Produk tidak memenuhi syarat kurasi."}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <AdminPageHeader
         title={`Edit: ${product.name}`}
         description="Ubah detail produk dan simpan."
@@ -319,8 +450,22 @@ function ProductEditForm({ product }: { product: Product }) {
         initialValues={initialValues}
         submitLabel={submitting ? "Menyimpan…" : "Simpan Perubahan"}
         submitting={submitting}
-        onSubmit={handleSubmit}
+        onSubmit={handleRegularSubmit}
         mode="edit"
+        approval={approvalProps}
+        rejectedPhotoIds={rejectedPhotoIds}
+      />
+
+      <ProductActionReasonDialog
+        open={rejectOpen}
+        mode="reject"
+        productId={product.id}
+        productName={product.name}
+        onClose={() => setRejectOpen(false)}
+        onDone={() => {
+          setRejectOpen(false);
+          router.push(backHref);
+        }}
       />
     </div>
   );
