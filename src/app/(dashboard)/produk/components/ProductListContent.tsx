@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { PackageOpen, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/app/(dashboard)/components/admin-ui";
@@ -8,6 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Product, Category, Artisan } from "@/lib/types";
+import { useClientPagination } from "@/hooks/useClientPagination";
+import { PaginationBar } from "@/components/shared/PaginationBar";
 
 import { ProductToolbar } from "./ProductToolbar";
 import { ProductTable } from "./ProductTable";
@@ -15,6 +18,7 @@ import { ProductActionReasonDialog } from "./ProductActionReasonDialog";
 import { AdjustStockDialog } from "./AdjustStockDialog";
 
 export function ProductListContent() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [artisans, setArtisans] = useState<Artisan[]>([]);
@@ -78,11 +82,28 @@ export function ProductListContent() {
       );
       toast.success(res.message || `Status produk diperbarui`);
       setProducts((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, isActive: nextStatus } : p))
+        prev.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                isActive: nextStatus,
+                displayStatus: nextStatus ? "aktif" : "disembunyikan",
+              }
+            : p
+        )
       );
     } catch (err) {
       if (err instanceof ApiError) {
-        toast.error(err.message);
+        if (err.code === "USE_APPROVAL_FLOW") {
+          toast.error("Produk belum disetujui. Gunakan alur persetujuan.", {
+            action: {
+              label: "Buka Persetujuan",
+              onClick: () => router.push("/produk/persetujuan"),
+            },
+          });
+        } else {
+          toast.error(err.message);
+        }
       } else {
         toast.error("Gagal mengubah status produk");
       }
@@ -113,6 +134,19 @@ export function ProductListContent() {
       return true;
     });
   }, [products, search, categoryId, artisanId]);
+
+  const {
+    pageItems,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    total,
+    totalPages,
+  } = useClientPagination(filtered, {
+    pageSize: 10,
+    resetKey: `${search}-${categoryId}-${artisanId}`,
+  });
 
   if (loading) {
     return (
@@ -168,14 +202,25 @@ export function ProductListContent() {
           />
         </Card>
       ) : (
-        <ProductTable
-          products={filtered}
-          onDeleteSuccess={handleDeleteSuccess}
-          onStockAdjusted={fetchData}
-          onAdjustStock={(p) => setStockTarget(p)}
-          onToggleActive={handleToggleActive}
-          togglingId={togglingId}
-        />
+        <div className="space-y-4">
+          <ProductTable
+            products={pageItems}
+            onDeleteSuccess={handleDeleteSuccess}
+            onStockAdjusted={fetchData}
+            onAdjustStock={(p) => setStockTarget(p)}
+            onToggleActive={handleToggleActive}
+            togglingId={togglingId}
+          />
+          <PaginationBar
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 20, 50]}
+          />
+        </div>
       )}
 
       <ProductActionReasonDialog

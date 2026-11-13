@@ -1,6 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Lightbox from "yet-another-react-lightbox";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
+import Counter from "yet-another-react-lightbox/plugins/counter";
+import Fullscreen from "yet-another-react-lightbox/plugins/fullscreen";
+import "@/styles/lightbox.css";
 import {
   DndContext,
   DragOverlay,
@@ -163,11 +168,13 @@ interface TileProps {
   canRight: boolean;
   canMakeMain: boolean;
   disabled?: boolean;
+  isRejected?: boolean;
   variantChoices?: VariantChoice[];
   onRemove: () => void;
   onShift: (delta: -1 | 1) => void;
   onMakeMain: () => void;
   onVariant: (choice: { option: string; value: string } | null) => void;
+  onClickPreview: () => void;
 }
 
 function stop(e: { stopPropagation: () => void }) {
@@ -182,11 +189,13 @@ function SortableTile({
   canRight,
   canMakeMain,
   disabled,
+  isRejected,
   variantChoices,
   onRemove,
   onShift,
   onMakeMain,
   onVariant,
+  onClickPreview,
 }: TileProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -213,12 +222,25 @@ function SortableTile({
   return (
     <div ref={setNodeRef} style={style} className="w-28 shrink-0 sm:w-32">
       <div
-        className={cn(
-          "relative aspect-square overflow-hidden rounded-xl border bg-muted touch-none",
-          disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing",
-        )}
         {...attributes}
         {...listeners}
+        role="button"
+        tabIndex={0}
+        aria-label={`Lihat foto ${position + 1}`}
+        className={cn(
+          "relative aspect-square overflow-hidden rounded-xl border bg-muted touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          disabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
+          isRejected && "ring-2 ring-destructive border-destructive"
+        )}
+        onClick={() => {
+          onClickPreview();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !isDragging) {
+            e.preventDefault();
+            onClickPreview();
+          }
+        }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -232,6 +254,11 @@ function SortableTile({
             Utama
           </span>
         )}
+        {isRejected && (
+          <span className="absolute left-1.5 bottom-1.5 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground">
+            Ditolak
+          </span>
+        )}
         {!disabled && (
           <>
             <button
@@ -240,7 +267,10 @@ function SortableTile({
               className={cn(iconButton, "right-1.5 top-1.5")}
               onPointerDown={stop}
               onKeyDown={stop}
-              onClick={onRemove}
+              onClick={(e) => {
+                stop(e);
+                onRemove();
+              }}
             >
               <X className="size-3.5" />
             </button>
@@ -251,7 +281,10 @@ function SortableTile({
               className={cn(iconButton, "left-1 top-1/2 -translate-y-1/2")}
               onPointerDown={stop}
               onKeyDown={stop}
-              onClick={() => onShift(-1)}
+              onClick={(e) => {
+                stop(e);
+                onShift(-1);
+              }}
             >
               <ChevronLeft className="size-4" />
             </button>
@@ -262,7 +295,10 @@ function SortableTile({
               className={cn(iconButton, "right-1 top-1/2 -translate-y-1/2")}
               onPointerDown={stop}
               onKeyDown={stop}
-              onClick={() => onShift(1)}
+              onClick={(e) => {
+                stop(e);
+                onShift(1);
+              }}
             >
               <ChevronRight className="size-4" />
             </button>
@@ -332,6 +368,7 @@ interface PhotoManagerProps {
   dirty?: boolean;
   onReset?: () => void;
   disabled?: boolean;
+  rejectedIds?: Set<string>;
 }
 
 /**
@@ -349,10 +386,14 @@ export function PhotoManager({
   dirty = false,
   onReset,
   disabled = false,
+  rejectedIds,
 }: PhotoManagerProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const justDraggedRef = useRef(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -436,11 +477,15 @@ export function PhotoManager({
   }
 
   function handleDragStart(e: DragStartEvent) {
+    justDraggedRef.current = true;
     setActiveId(String(e.active.id));
   }
 
   function handleDragEnd(e: DragEndEvent) {
     setActiveId(null);
+    setTimeout(() => {
+      justDraggedRef.current = false;
+    }, 150);
     const { active, over } = e;
     if (!over || active.id === over.id) return;
     const from = items.findIndex((i) => i.id === active.id);
@@ -465,11 +510,17 @@ export function PhotoManager({
         canRight={index < items.length - 1 && isLinked(items[index + 1]) === group}
         canMakeMain={!group && !!first && first.id !== item.id}
         disabled={disabled}
+        isRejected={rejectedIds?.has(item.id)}
         variantChoices={variantMode ? variantChoices : undefined}
         onRemove={() => remove(item)}
         onShift={(d) => shift(item, d)}
         onMakeMain={() => makeMain(item)}
         onVariant={(c) => setVariant(item, c)}
+        onClickPreview={() => {
+          if (!justDraggedRef.current) {
+            setLightboxIndex(index);
+          }
+        }}
       />
     );
   }
@@ -505,13 +556,48 @@ export function PhotoManager({
             {plain.map(renderTile)}
             <label
               htmlFor={inputId}
+              onDragOver={(e) => {
+                if (full || disabled || adding) return;
+                // Pastikan hanya memproses file drag dari luar/OS (bukan drag dnd internal)
+                if (e.dataTransfer.types.includes("Files")) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingOver(true);
+                }
+              }}
+              onDragEnter={(e) => {
+                if (full || disabled || adding) return;
+                if (e.dataTransfer.types.includes("Files")) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingOver(true);
+                }
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDraggingOver(false);
+              }}
+              onDrop={async (e) => {
+                if (full || disabled || adding) return;
+                if (e.dataTransfer.types.includes("Files")) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingOver(false);
+                  const files = e.dataTransfer.files;
+                  if (files && files.length > 0) {
+                    await handleFiles(files);
+                  }
+                }
+              }}
               className={cn(
                 "flex aspect-square w-28 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed text-xs text-muted-foreground transition hover:border-primary hover:text-primary sm:w-32",
+                isDraggingOver && "border-primary bg-primary/10 text-primary scale-[1.02]",
                 (full || disabled || adding) && "pointer-events-none opacity-40",
               )}
             >
-              <ImagePlus className="size-6" />
-              {adding ? "Memproses..." : "Tambah foto"}
+              <ImagePlus className={cn("size-6", isDraggingOver && "animate-bounce text-primary")} />
+              {adding ? "Memproses..." : isDraggingOver ? "Lepaskan file" : "Tambah foto"}
             </label>
           </div>
         </SortableContext>
@@ -555,6 +641,14 @@ export function PhotoManager({
           await handleFiles(target.files);
           target.value = "";
         }}
+      />
+
+      <Lightbox
+        open={lightboxIndex !== null}
+        close={() => setLightboxIndex(null)}
+        index={lightboxIndex ?? 0}
+        slides={items.map((i) => ({ src: i.previewUrl }))}
+        plugins={[Zoom, Counter, Fullscreen]}
       />
     </div>
   );
