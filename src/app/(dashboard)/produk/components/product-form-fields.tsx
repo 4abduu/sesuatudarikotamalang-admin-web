@@ -309,9 +309,9 @@ export function ProductFormFields({
       let detached = false;
       setPhotoItems((prev) =>
         prev.map((item) => {
-          if (item.variantOption || item.variantValue) {
+        if (item.variantCombination && item.variantCombination.length > 0) {
             detached = true;
-            return { ...item, variantOption: null, variantValue: null };
+          return { ...item, variantCombination: [] };
           }
           return item;
         })
@@ -323,11 +323,15 @@ export function ProductFormFields({
     let detached = false;
     setPhotoItems((prev) =>
       prev.map((item) => {
-        if (!item.variantOption || !item.variantValue) return item;
-        const opt = variantChoices.find((vc) => vc.option === item.variantOption);
-        if (!opt || !opt.values.includes(item.variantValue)) {
+        const combination = item.variantCombination ?? [];
+        if (combination.length === 0) return item;
+        const valid = combination.every((part) => {
+          const opt = variantChoices.find((vc) => vc.option === part.option);
+          return !!opt && opt.values.includes(part.value);
+        });
+        if (!valid) {
           detached = true;
-          return { ...item, variantOption: null, variantValue: null };
+          return { ...item, variantCombination: [] };
         }
         return item;
       })
@@ -581,6 +585,19 @@ export function ProductFormFields({
                 &ldquo;Ukuran&rdquo; dengan &ldquo;S, M, L&rdquo;. Stok dihitung
                 per kombinasi.
               </p>
+              {mode === "create" ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+                  Periksa semua opsi dan nilainya sebelum menyimpan. Setelah
+                  produk dibuat dan disetujui admin, struktur varian tidak
+                  dapat diubah; yang dapat diedit hanya stok tiap kombinasi.
+                </p>
+              ) : (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+                  Struktur varian sudah tersimpan dan dikunci agar stok,
+                  pesanan, dan riwayat tetap konsisten. Anda masih bisa
+                  mengubah stok setiap kombinasi di bawah.
+                </p>
+              )}
               {variantOptions.map((o, i) => (
                 <div
                   key={i}
@@ -592,6 +609,7 @@ export function ProductFormFields({
                       value={o.name}
                       onChange={(e) => updateOption(i, "name", e.target.value)}
                       placeholder="Contoh: Motif"
+                      disabled={mode === "edit"}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -602,35 +620,40 @@ export function ProductFormFields({
                         updateOption(i, "valuesText", e.target.value)
                       }
                       placeholder="Contoh: Ubin, Sulur"
+                      disabled={mode === "edit"}
                     />
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => removeOption(i)}
-                    aria-label="Hapus opsi"
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {mode !== "edit" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeOption(i)}
+                      aria-label="Hapus opsi"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={addOption}
-            disabled={variantOptions.length >= 3}
-            className="gap-1.5"
-          >
-            <Plus className="h-4 w-4" />
-            Tambah Opsi
-            {variantOptions.length > 0 && ` (${variantOptions.length}/3)`}
-          </Button>
+          {mode !== "edit" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addOption}
+              disabled={variantOptions.length >= 3}
+              className="gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              Tambah Opsi
+              {variantOptions.length > 0 && ` (${variantOptions.length}/3)`}
+            </Button>
+          )}
 
           {/* Combination stock matrix */}
           {variantOptions.length > 0 && (
@@ -791,7 +814,7 @@ export function ProductFormFields({
 
       {/* ===== Sticky action bar ===== */}
       <div className="sticky bottom-0 z-10 -mx-4 -mb-4 flex flex-col-reverse items-stretch gap-3 border-t border-border bg-card/95 px-4 py-3.5 shadow-[0_-4px_16px_rgba(43,33,26,0.06)] backdrop-blur sm:flex-row sm:items-center sm:justify-end md:-mx-6 md:-mb-6 md:px-6 lg:-mx-8 lg:-mb-8 lg:px-8">
-        {mode === "edit" && approval ? (
+        {mode === "edit" && approval && approval.status === "menunggu" ? (
           <>
             <Button
               type="button"

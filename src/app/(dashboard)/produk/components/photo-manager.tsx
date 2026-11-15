@@ -52,6 +52,13 @@ import {
 
 export interface ImageVariantLink {
   url: string;
+  combination?: VariantAssignment[];
+  /** Format lama, tetap dibaca agar data existing tidak hilang. */
+  option?: string;
+  value?: string;
+}
+
+export interface VariantAssignment {
   option: string;
   value: string;
 }
@@ -69,14 +76,13 @@ export interface PhotoItem {
   previewUrl: string;
   url?: string;
   file?: File;
-  variantOption?: string | null;
-  variantValue?: string | null;
+  variantCombination?: VariantAssignment[];
 }
 
 let seq = 0;
 const nextId = () => `photo-${++seq}`;
 
-export const isLinked = (i: PhotoItem) => !!i.variantOption && !!i.variantValue;
+export const isLinked = (i: PhotoItem) => (i.variantCombination?.length ?? 0) > 0;
 
 /** Membangun daftar dari respons API (`images` + `imageVariants`), sudah dinormalkan. */
 export function createPhotoItems(images: string[], links: ImageVariantLink[] = []): PhotoItem[] {
@@ -88,8 +94,13 @@ export function createPhotoItems(images: string[], links: ImageVariantLink[] = [
         id: nextId(),
         previewUrl: url,
         url,
-        variantOption: link?.option ?? null,
-        variantValue: link?.value ?? null,
+        variantCombination: link
+          ? (link.combination?.length
+            ? link.combination
+            : link.option && link.value
+              ? [{ option: link.option, value: link.value }]
+              : [])
+          : [],
       };
     }),
   );
@@ -106,8 +117,7 @@ export function photoListsEqual(a: PhotoItem[], b: PhotoItem[]): boolean {
   return a.every(
     (item, i) =>
       item.id === b[i].id &&
-      (item.variantOption ?? null) === (b[i].variantOption ?? null) &&
-      (item.variantValue ?? null) === (b[i].variantValue ?? null),
+      JSON.stringify(item.variantCombination ?? []) === JSON.stringify(b[i].variantCombination ?? []),
   );
 }
 
@@ -143,8 +153,7 @@ export async function syncPhotos(items: PhotoItem[]): Promise<PhotoSyncResult> {
     if (isLinked(item)) {
       imageVariants.push({
         url,
-        option: item.variantOption as string,
-        value: item.variantValue as string,
+        combination: item.variantCombination,
       });
     }
   }
@@ -173,7 +182,7 @@ interface TileProps {
   onRemove: () => void;
   onShift: (delta: -1 | 1) => void;
   onMakeMain: () => void;
-  onVariant: (choice: { option: string; value: string } | null) => void;
+  onVariant: (choice: VariantAssignment[] | null) => void;
   onClickPreview: () => void;
 }
 
@@ -207,14 +216,7 @@ function SortableTile({
     opacity: isDragging ? 0.4 : 1,
   };
 
-  const selectedKey = (() => {
-    if (!variantChoices || !isLinked(item)) return "none";
-    for (let ci = 0; ci < variantChoices.length; ci++) {
-      const vi = variantChoices[ci].values.indexOf(item.variantValue as string);
-      if (variantChoices[ci].option === item.variantOption && vi >= 0) return `${ci}:${vi}`;
-    }
-    return "none";
-  })();
+  const selectedFor = (option: string) => item.variantCombination?.find((part) => part.option === option)?.value ?? "none";
 
   const iconButton =
     "absolute flex size-6 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 disabled:opacity-30 disabled:hover:bg-black/60";
@@ -320,31 +322,31 @@ function SortableTile({
             </Button>
           )}
           {variantChoices && variantChoices.length > 0 && (
-            <Select
-              value={selectedKey}
-              onValueChange={(v) => {
-                if (v === "none") return onVariant(null);
-                const [ci, vi] = v.split(":").map(Number);
-                const choice = variantChoices[ci];
-                if (choice && choice.values[vi] !== undefined) {
-                  onVariant({ option: choice.option, value: choice.values[vi] });
-                }
-              }}
-            >
-              <SelectTrigger size="sm" className="h-7 w-full px-2 text-xs">
-                <SelectValue placeholder="Varian" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Tanpa varian</SelectItem>
-                {variantChoices.map((choice, ci) =>
-                  choice.values.map((value, vi) => (
-                    <SelectItem key={`${ci}:${vi}`} value={`${ci}:${vi}`}>
-                      {choice.option}: {value}
-                    </SelectItem>
-                  )),
-                )}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              {variantChoices.map((choice) => (
+                <Select
+                  key={choice.option}
+                  value={selectedFor(choice.option)}
+                  onValueChange={(value) => {
+                    const current = (item.variantCombination ?? []).filter((part) => part.option !== choice.option);
+                    const next = value === "none" ? current : [...current, { option: choice.option, value }];
+                    onVariant(next.length > 0 ? next : null);
+                  }}
+                >
+                  <SelectTrigger size="sm" className="h-7 w-full px-2 text-xs">
+                    <SelectValue placeholder={choice.option} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{choice.option}: Semua</SelectItem>
+                    {choice.values.map((value) => (
+                      <SelectItem key={`${choice.option}:${value}`} value={value}>
+                        {choice.option}: {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -464,12 +466,12 @@ export function PhotoManager({
     onChange([item, ...items.filter((i) => i.id !== item.id)]);
   }
 
-  function setVariant(item: PhotoItem, choice: { option: string; value: string } | null) {
+  function setVariant(item: PhotoItem, combination: VariantAssignment[] | null) {
     onChange(
       normalizePhotoOrder(
         items.map((i) =>
           i.id === item.id
-            ? { ...i, variantOption: choice?.option ?? null, variantValue: choice?.value ?? null }
+            ? { ...i, variantCombination: combination ?? [] }
             : i,
         ),
       ),

@@ -122,7 +122,7 @@ export interface Product {
   description?: string | null;
   price: number;
   images: string[];
-  imageVariants?: { url: string; option: string; value: string }[];
+  imageVariants?: { url: string; combination?: { option: string; value: string }[]; option?: string; value?: string }[];
   isLimited: boolean;
   isActive: boolean;
   approvalStatus?: "menunggu" | "disetujui" | "ditolak";
