@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AdminLoadingState } from "@/components/shared/AdminLoadingState";
 import { apiFetch, ApiError } from "@/lib/api";
 import { DashboardData } from "@/lib/types";
 
@@ -65,14 +66,7 @@ export function DashboardContent() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="grid min-h-[350px] place-items-center rounded-xl border border-border bg-card p-12">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium">Memuat data dashboard…</p>
-        </div>
-      </div>
-    );
+    return <AdminLoadingState message="Memuat data dashboard…" />;
   }
 
   if (error || !data) {
@@ -129,12 +123,12 @@ export function DashboardContent() {
 
       {/* 6. Baris Aktivitas Terbaru + Pickup Mendatang */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <RecentActivityCard />
+        <RecentActivityCard recentActivity={data.recentActivity} />
         <UpcomingPickupsCard upcomingPickups={data.upcomingPickups} />
       </div>
 
       {/* 7. Baris Peringatan Stok Menipis */}
-      <LowStockAlertCard />
+      <LowStockAlertCard lowStockProducts={data.lowStockProducts} />
     </div>
   );
 }

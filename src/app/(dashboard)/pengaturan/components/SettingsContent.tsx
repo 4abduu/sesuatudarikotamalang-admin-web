@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AdminLoadingState } from "@/components/shared/AdminLoadingState";
 import { apiFetch, ApiError } from "@/lib/api";
 import { AppSettings } from "@/lib/types";
 
@@ -11,6 +12,8 @@ import { ReservationSettingsCard } from "./ReservationSettingsCard";
 import { PickupDeadlineCard } from "./PickupDeadlineCard";
 import { ContactSettingsCard } from "./ContactSettingsCard";
 import { OperationalSettingsCards } from "./OperationalSettingsCards";
+import { AboutSettingsCard } from "./AboutSettingsCard";
+import { OlshopStoreCard } from "./OlshopStoreCard";
 
 export function SettingsContent() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -107,15 +110,24 @@ export function SettingsContent() {
     }
   };
 
+  // Simpan sebagian pengaturan (dipakai kartu Tentang Kami dan Link Toko). Mengembalikan true bila berhasil.
+  const savePatch = async (patch: Record<string, unknown>): Promise<boolean> => {
+    try {
+      const res = await apiFetch<{ message: string; settings: AppSettings }>("/api/admin/settings", {
+        method: "PUT",
+        body: JSON.stringify(patch),
+      });
+      setSettings(res.settings);
+      toast.success(res.message || "Pengaturan berhasil disimpan");
+      return true;
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Gagal menyimpan pengaturan ke server");
+      return false;
+    }
+  };
+
   if (loading) {
-    return (
-      <div className="grid min-h-[350px] place-items-center rounded-xl border border-border bg-card p-12">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium">Memuat pengaturan sistem…</p>
-        </div>
-      </div>
-    );
+    return <AdminLoadingState message="Memuat pengaturan sistem…" />;
   }
 
   if (error || !settings) {
@@ -168,7 +180,13 @@ export function SettingsContent() {
         loading={saving}
       />
 
-      {/* 4. Pengaturan stok menipis & bagi hasil utama */}
+      {/* 4. Halaman Tentang Kami (deskripsi + email publik) */}
+      <AboutSettingsCard settings={settings} onSave={savePatch} />
+
+      {/* 5. Link toko di marketplace (default untuk produk bermode "link toko") */}
+      <OlshopStoreCard settings={settings} onSave={savePatch} />
+
+      {/* 6. Pengaturan stok menipis & bagi hasil utama */}
       <OperationalSettingsCards />
     </div>
   );

@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { AlertTriangle, PackageOpen, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { products, isLowStock, lowStockVariants } from "@/data/products";
 
-export function LowStockAlertCard() {
-  const lowStockProductList = products.filter((p) => isLowStock(p, 6));
+interface LowStockAlertCardProps {
+  lowStockProducts?: {
+    id: number | string;
+    name: string;
+    variantId?: string;
+    variantLabel: string;
+    stock: number;
+  }[];
+}
 
-  if (lowStockProductList.length === 0) {
+export function LowStockAlertCard({ lowStockProducts = [] }: LowStockAlertCardProps) {
+  if (lowStockProducts.length === 0) {
     return null;
   }
 
@@ -26,29 +33,29 @@ export function LowStockAlertCard() {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {lowStockProductList.map((p) => {
-            const low = lowStockVariants(p, 6);
-            return (
-              <Link
-                key={p.id}
-                href="/produk"
-                className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3 transition hover:border-primary/40 hover:bg-secondary/40"
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-secondary text-primary">
-                  <PackageOpen className="h-4 w-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-foreground">
-                    {p.name}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {low.map((v) => `${v.options.join(" / ")} (${v.stock})`).join(", ")}
-                  </p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              </Link>
-            );
-          })}
+          {lowStockProducts.map((p, idx) => (
+            <Link
+              key={`${p.id}-${p.variantLabel || idx}`}
+              href={`/produk?adjustStock=${p.id}${p.variantId ? `&variantId=${p.variantId}` : ""}`}
+              className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3 transition hover:border-primary/40 hover:bg-secondary/40"
+            >
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-secondary text-primary">
+                <PackageOpen className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {p.name}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {p.variantLabel ? `${p.variantLabel} ` : ""}
+                  <span className="font-medium text-destructive">
+                    (sisa {p.stock})
+                  </span>
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
+          ))}
         </div>
       </CardContent>
     </Card>

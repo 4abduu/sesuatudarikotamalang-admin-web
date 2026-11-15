@@ -28,6 +28,7 @@ import type {
   PickupSettings,
   PickupSlot,
 } from "@/lib/types";
+import { AdminLoadingState } from "@/components/shared/AdminLoadingState";
 import { ImpactDialog, SlotFormDialog } from "./SlotDialogs";
 import { HolidaySection } from "./HolidaySection";
 
@@ -178,11 +179,7 @@ export function PickupScheduleContent() {
   }
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AdminLoadingState message="Memuat jadwal pickup…" />;
   }
 
   if (loadError || !schedule) {
@@ -258,15 +255,15 @@ export function PickupScheduleContent() {
             </Alert>
           )}
 
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="overflow-x-auto rounded-lg border border-border bg-card">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Jam</TableHead>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="pl-4">Jam</TableHead>
                   <TableHead>Kapasitas</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Pesanan aktif ke depan</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  <TableHead className="pr-4 text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -275,7 +272,7 @@ export function PickupScheduleContent() {
                   const used = slot.usage.totalOrders > 0;
                   return (
                     <TableRow key={slot.id ?? slot.time} className={slot.isActive ? "" : "opacity-70"}>
-                      <TableCell className="font-semibold">
+                      <TableCell className="pl-4 font-semibold">
                         <span className="inline-flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                           {slot.time} WIB
@@ -288,7 +285,7 @@ export function PickupScheduleContent() {
                         </Badge>
                       </TableCell>
                       <TableCell>{slot.usage.upcomingActiveOrders}</TableCell>
-                      <TableCell>
+                      <TableCell className="pr-4">
                         <div className="flex flex-wrap justify-end gap-2">
                           <Button
                             type="button"

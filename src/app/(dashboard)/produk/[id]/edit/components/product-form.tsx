@@ -10,12 +10,13 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
-import { AdminPageHeader } from "@/app/(dashboard)/components/admin-ui";
+import { AdminPageHeader, AdminLoadingState } from "@/app/(dashboard)/components/admin-ui";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ProductActionReasonDialog } from "@/app/(dashboard)/produk/components/ProductActionReasonDialog";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Product } from "@/lib/types";
+import { olshopPayload, olshopStateEqual, olshopStateFromProduct } from "@/lib/olshop";
 import {
   ProductFormFields,
   type ProductFormInitialValues,
@@ -66,14 +67,7 @@ export function ProductEditContent({
   }, [fetchProduct]);
 
   if (loading) {
-    return (
-      <div className="grid min-h-[400px] place-items-center rounded-xl border border-border bg-card p-12">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium">Memuat data produk…</p>
-        </div>
-      </div>
-    );
+    return <AdminLoadingState message="Memuat data produk…" minHeight="min-h-[400px]" />;
   }
 
   if (error || !product) {
@@ -139,6 +133,26 @@ function ProductEditForm({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
 
+  // Scroll ke section #stok jika URL mengandung hash tersebut (mis. dari kartu "Perlu Restock")
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.replace("#", "");
+    if (!hash) return;
+    // Tunggu sebentar agar DOM form selesai render
+    const timer = setTimeout(() => {
+      const el = document.getElementById(hash);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Highlight ring sesaat agar user tahu section target
+        el.classList.add("ring-2", "ring-primary/60");
+        setTimeout(() => {
+          el.classList.remove("ring-2", "ring-primary/60");
+        }, 2500);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Petakan data API → format yang dipakai ProductFormFields
   const initialValues: ProductFormInitialValues = {
     name: product.name,
@@ -148,6 +162,7 @@ function ProductEditForm({
     description: product.description ?? "",
     limited: product.isLimited,
     shopeeUrl: product.shopeeUrl ?? "",
+    olshop: olshopStateFromProduct(product),
     // Produk tanpa varian: 1 varian dengan combination []
     singleStock:
       !product.variants || product.variants.length === 0
@@ -264,7 +279,8 @@ function ProductEditForm({
         shortDescription: values.shortDesc.trim() || undefined,
         description: values.description.trim() || undefined,
         isLimited: values.limited,
-        shopeeUrl: values.shopeeUrl?.trim() || undefined,
+        // Kirim olshop hanya bila diubah, supaya edit biasa tidak gagal akibat link toko yang sudah dihapus admin
+        ...(values.olshop && initialValues.olshop && olshopStateEqual(values.olshop, initialValues.olshop) ? {} : values.olshop ? olshopPayload(values.olshop) : {}),
         variantStocks: variantStocksPayload,
       };
 

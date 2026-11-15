@@ -135,6 +135,8 @@ export interface Product {
   soldCount?: number;
   viewCount?: number;
   shopeeUrl?: string | null;
+  /** Pengaturan link marketplace per platform (mentah, untuk form edit) */
+  olshop?: Partial<Record<"shopee" | "tokopedia" | "tiktokshop", { mode: "tidak" | "toko" | "khusus"; url: string | null }>>;
   createdAt: string;
   updatedAt: string;
   category?: Category;
@@ -246,6 +248,11 @@ export interface AppSettings {
   refundWindowDays?: number;
   whatsappAdminNumber: string;
   notificationEmail: string;
+  contactEmail?: string | null;
+  aboutDescription?: string | null;
+  shopeeStoreUrl?: string | null;
+  tokopediaStoreUrl?: string | null;
+  tiktokshopStoreUrl?: string | null;
   lowStockThreshold?: number;
   defaultCreatorSharePercent?: number;
   updatedAt: string;
@@ -261,11 +268,36 @@ export interface PendingRefundItem {
   updatedAt: string;
 }
 
+export type RecentActivityType =
+  | "order_new"
+  | "order_paid"
+  | "order_completed"
+  | "order_cancelled"
+  | "order"
+  | "application"
+  | "review"
+  | "low_stock"
+  | "pickup";
+
+export interface RecentActivityItem {
+  id: string;
+  type: RecentActivityType | string;
+  text: string;
+  createdAt: string;
+}
+
 export interface DashboardData {
   ordersToday: number;
   readyForPickup: number;
   pendingApplications: number;
   lowStockCount: number;
+  lowStockProducts?: {
+    id: number | string;
+    name: string;
+    variantId?: string;
+    variantLabel: string;
+    stock: number;
+  }[];
   revenue7Days: number;
   revenueByDay?: {
     date: string;
@@ -297,6 +329,7 @@ export interface DashboardData {
   }[];
   pendingRefundCount?: number;
   pendingRefunds?: PendingRefundItem[];
+  recentActivity?: RecentActivityItem[];
 }
 
 export type SlotUsage = {

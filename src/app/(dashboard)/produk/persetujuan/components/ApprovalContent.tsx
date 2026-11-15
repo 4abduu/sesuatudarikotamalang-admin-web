@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, ClipboardCheck, History, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { EmptyState } from "@/app/(dashboard)/components/admin-ui";
+import { EmptyState, AdminLoadingState } from "@/app/(dashboard)/components/admin-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -91,9 +91,7 @@ export function ApprovalContent() {
       </div>
 
       {loading ? (
-        <div className="grid min-h-[260px] place-items-center rounded-xl border border-border bg-card">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <AdminLoadingState message="Memuat antrean persetujuan…" minHeight="min-h-[260px]" />
       ) : error ? (
         <div className="grid min-h-[240px] place-items-center rounded-xl border border-destructive/30 bg-destructive/5 p-10 text-center">
           <div className="flex max-w-md flex-col items-center gap-3">

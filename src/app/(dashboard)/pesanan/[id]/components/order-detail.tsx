@@ -21,7 +21,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-import { OrderStatusBadge } from "@/app/(dashboard)/components/admin-ui";
+import { OrderStatusBadge, AdminLoadingState } from "@/app/(dashboard)/components/admin-ui";
 import {
   Card,
   CardContent,
@@ -133,14 +133,7 @@ export function OrderDetailContent({ orderId }: { orderId: string }) {
   }, [fetchOrder]);
 
   if (loading) {
-    return (
-      <div className="grid min-h-[400px] place-items-center rounded-xl border border-border bg-card p-12">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium">Memuat detail pesanan…</p>
-        </div>
-      </div>
-    );
+    return <AdminLoadingState message="Memuat detail pesanan…" minHeight="min-h-[400px]" />;
   }
 
   if (error || !order) {

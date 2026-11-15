@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { AdminLoadingState } from "@/components/shared/AdminLoadingState";
 import { apiFetch, ApiError } from "@/lib/api";
 import type { HolidayImpact, PickupHolidaysResponse, WeeklyOff } from "@/lib/types-operasional";
 import { HolidayImpactDialog } from "./HolidayImpactDialog";
@@ -124,11 +125,7 @@ export function HolidaySection() {
   }
 
   if (loading) {
-    return (
-      <div className="flex h-32 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <AdminLoadingState message="Memuat jadwal libur…" minHeight="min-h-[160px]" />;
   }
 
   if (loadError || !data) {

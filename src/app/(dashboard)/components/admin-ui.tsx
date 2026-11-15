@@ -156,3 +156,5 @@ export function EmptyState({
     </div>
   );
 }
+
+export { AdminLoadingState, type AdminLoadingStateProps } from "@/components/shared/AdminLoadingState";

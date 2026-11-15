@@ -59,6 +59,15 @@ import {
   type ImageVariantLink,
 } from "@/app/(dashboard)/produk/components/photo-manager";
 import { formatRupiah } from "@/lib/format";
+import { OlshopLinksCard } from "@/app/(dashboard)/produk/components/olshop-links-card";
+import {
+  OLSHOP_PLATFORMS,
+  emptyOlshopState,
+  olshopStateEqual,
+  validateOlshopUrlClient,
+  type OlshopFormState,
+  type OlshopPlatform,
+} from "@/lib/olshop";
 import { cn } from "@/lib/utils";
 
 /** Cartesian product helper (sebelumnya dari @/data/products) */
@@ -77,6 +86,7 @@ export type ProductFormInitialValues = {
   description: string;
   limited: boolean;
   shopeeUrl?: string;
+  olshop?: OlshopFormState;
   singleStock: string;
   variantOptions: { name: string; valuesText: string }[];
   variantStocks: Record<string, string>;
@@ -107,6 +117,7 @@ export const emptyInitialValues: ProductFormInitialValues = {
   description: "",
   limited: false,
   shopeeUrl: "",
+  olshop: emptyOlshopState(),
   singleStock: "",
   variantOptions: [],
   variantStocks: {},
@@ -120,6 +131,7 @@ type Errors = {
   name?: string;
   price?: string;
   photo?: string;
+  olshop?: string;
 };
 
 export type ProductApprovalProps = {
@@ -184,6 +196,20 @@ export function ProductFormFields({
   const [processItems, setProcessItems] = useState<PhotoItem[]>(initialProcessItems);
 
   const [errors, setErrors] = useState<Errors>({});
+  const [olshop, setOlshop] = useState<OlshopFormState>(initialValues.olshop ?? emptyOlshopState());
+  const [olshopErrors, setOlshopErrors] = useState<Partial<Record<OlshopPlatform, string>>>({});
+
+  /** Pemeriksaan sisi klien untuk link marketplace (backend tetap memeriksa ulang). */
+  function checkOlshop(): Partial<Record<OlshopPlatform, string>> {
+    const found: Partial<Record<OlshopPlatform, string>> = {};
+    for (const p of OLSHOP_PLATFORMS) {
+      if (olshop[p].mode === "khusus") {
+        const msg = validateOlshopUrlClient(p, olshop[p].url);
+        if (msg) found[p] = msg;
+      }
+    }
+    return found;
+  }
 
   const isDirty = useMemo(() => {
     if (name !== initialValues.name) return true;
@@ -199,8 +225,10 @@ export function ProductFormFields({
     if (storyProcess !== initialValues.story.process) return true;
     if (!photoListsEqual(photoItems, initialPhotoItems)) return true;
     if (!photoListsEqual(processItems, initialProcessItems)) return true;
+    if (!olshopStateEqual(olshop, initialValues.olshop ?? emptyOlshopState())) return true;
     return false;
   }, [
+    olshop,
     name,
     categoryId,
     price,
@@ -327,6 +355,9 @@ export function ProductFormFields({
       next.price = "Harga wajib diisi";
     if (photoItems.length === 0)
       next.photo = "Minimal 1 foto produk";
+    const olshopFound = checkOlshop();
+    setOlshopErrors(olshopFound);
+    if (Object.keys(olshopFound).length > 0) next.olshop = "Periksa link marketplace";
     setErrors(next);
     if (Object.keys(next).length > 0) {
       toast.error("Lengkapi isian yang wajib diisi");
@@ -341,6 +372,7 @@ export function ProductFormFields({
         description,
         limited,
         shopeeUrl: initialValues.shopeeUrl,
+        olshop,
         singleStock,
         variantOptions,
         variantStocks,
@@ -515,7 +547,7 @@ export function ProductFormFields({
       </Card>
 
       {/* ===== Varian & Stok ===== */}
-      <Card>
+      <Card id="stok" className="scroll-mt-24 transition-all duration-300">
         <CardHeader className="pb-4">
           <CardTitle className="font-display text-base font-bold">
             Varian &amp; Stok
@@ -666,6 +698,17 @@ export function ProductFormFields({
         </CardContent>
       </Card>
 
+      {/* ===== Link Marketplace ===== */}
+      <OlshopLinksCard
+        value={olshop}
+        onChange={(next) => {
+          setOlshop(next);
+          setOlshopErrors({});
+        }}
+        errors={olshopErrors}
+        disabled={submitting}
+      />
+
       {/* ===== Behind the Design ===== */}
       <Card>
         <CardHeader className="pb-4">
@@ -747,7 +790,7 @@ export function ProductFormFields({
       </Card>
 
       {/* ===== Sticky action bar ===== */}
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-col-reverse items-stretch gap-3 border-t border-border bg-card/95 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-end md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
+      <div className="sticky bottom-0 z-10 -mx-4 -mb-4 flex flex-col-reverse items-stretch gap-3 border-t border-border bg-card/95 px-4 py-3.5 shadow-[0_-4px_16px_rgba(43,33,26,0.06)] backdrop-blur sm:flex-row sm:items-center sm:justify-end md:-mx-6 md:-mb-6 md:px-6 lg:-mx-8 lg:-mb-8 lg:px-8">
         {mode === "edit" && approval ? (
           <>
             <Button
@@ -765,7 +808,7 @@ export function ProductFormFields({
               <Button
                 type="button"
                 variant="outline"
-                className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10"
+                className="gap-1.5 border-destructive text-destructive hover:bg-destructive hover:text-white hover:border-destructive"
                 onClick={approval.onReject}
                 disabled={submitting || approval.busy}
               >
@@ -798,6 +841,9 @@ export function ProductFormFields({
                   if (!name.trim()) next.name = "Nama produk wajib diisi";
                   if (!price.trim() || Number(price) <= 0) next.price = "Harga wajib diisi";
                   if (photoItems.length === 0) next.photo = "Minimal 1 foto produk";
+                  const olshopFound = checkOlshop();
+                  setOlshopErrors(olshopFound);
+                  if (Object.keys(olshopFound).length > 0) next.olshop = "Periksa link marketplace";
                   setErrors(next);
                   if (Object.keys(next).length > 0) {
                     toast.error("Lengkapi isian yang wajib diisi");
@@ -812,6 +858,7 @@ export function ProductFormFields({
                       description,
                       limited,
                       shopeeUrl: initialValues.shopeeUrl,
+                      olshop,
                       singleStock,
                       variantOptions,
                       variantStocks,

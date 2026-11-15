@@ -19,7 +19,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
-import { AppStatusBadge } from "@/app/(dashboard)/components/admin-ui";
+import { AppStatusBadge, AdminLoadingState } from "@/app/(dashboard)/components/admin-ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -138,14 +138,7 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
   };
 
   if (loading) {
-    return (
-      <div className="grid min-h-[400px] place-items-center rounded-xl border border-border bg-card p-12">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium">Memuat data pengajuan…</p>
-        </div>
-      </div>
-    );
+    return <AdminLoadingState message="Memuat data pengajuan…" minHeight="min-h-[400px]" />;
   }
 
   if (error || !application) {

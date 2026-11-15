@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { MessageSquareQuote, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { EmptyState } from "@/app/(dashboard)/components/admin-ui";
+import { EmptyState, AdminLoadingState } from "@/app/(dashboard)/components/admin-ui";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -163,14 +163,7 @@ export function ReviewContent() {
   };
 
   if (loading && reviews.length === 0) {
-    return (
-      <div className="grid min-h-[350px] place-items-center rounded-xl border border-border bg-card p-12">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium">Memuat data ulasan…</p>
-        </div>
-      </div>
-    );
+    return <AdminLoadingState message="Memuat data ulasan…" />;
   }
 
   if (error && reviews.length === 0) {

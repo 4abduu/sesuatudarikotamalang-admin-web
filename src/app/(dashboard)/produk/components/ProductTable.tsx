@@ -172,12 +172,12 @@ export function ProductTable({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        className="group h-8 w-8 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                         aria-label="Sesuaikan stok"
                         title="Sesuaikan stok"
                         onClick={() => onAdjustStock(p)}
                       >
-                        <Boxes className="h-4 w-4" />
+                        <Boxes className="h-4 w-4 transition-colors group-hover:text-accent-foreground" />
                       </Button>
                       <Button
                         asChild

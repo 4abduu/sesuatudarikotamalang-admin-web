@@ -27,11 +27,13 @@ import type { Product } from "@/lib/types";
 export function AdjustStockDialog({
   open,
   product,
+  initialVariantId,
   onClose,
   onDone,
 }: {
   open: boolean;
   product: Product | null;
+  initialVariantId?: string;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -47,12 +49,18 @@ export function AdjustStockDialog({
 
   useEffect(() => {
     if (!open) return;
-    setVariantId(hasVariants ? String(variants[0].id) : "");
+    const targetVariant =
+      initialVariantId && variants.some((v) => String(v.id) === String(initialVariantId))
+        ? String(initialVariantId)
+        : hasVariants
+        ? String(variants[0].id)
+        : "";
+    setVariantId(targetVariant);
     setDeltaText("");
     setReason("barang_masuk");
     setNote("");
     setError(null);
-  }, [open, hasVariants, variants]);
+  }, [open, hasVariants, variants, initialVariantId]);
 
   const selectedVariant = variants.find((v) => String(v.id) === variantId);
   const currentStock = hasVariants

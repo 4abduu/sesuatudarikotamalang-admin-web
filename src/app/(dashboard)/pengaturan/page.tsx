@@ -8,7 +8,7 @@ export default function PengaturanSistemPage() {
       {/* Header Halaman Pengaturan */}
       <AdminPageHeader
         title="Pengaturan Sistem"
-        description="Konfigurasi operasional toko, durasi reservasi hold, batas pengambilan, dan kontak admin."
+        description="Konfigurasi operasional toko, durasi reservasi hold, batas pengambilan, kontak admin, halaman Tentang Kami, dan link toko marketplace."
       />
 
       {/* Konten Modular Pengaturan Terhubung API */}

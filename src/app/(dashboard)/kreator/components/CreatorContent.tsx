@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Users, UserPlus, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { Users, UserPlus, AlertTriangle, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { AdminLoadingState } from "@/components/shared/AdminLoadingState";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Artisan, ArtisanApplication } from "@/lib/types";
 
@@ -51,14 +52,7 @@ export function CreatorContent() {
   };
 
   if (loading) {
-    return (
-      <div className="grid min-h-[350px] place-items-center rounded-xl border border-border bg-card p-12">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium">Memuat data kreator…</p>
-        </div>
-      </div>
-    );
+    return <AdminLoadingState message="Memuat data kreator…" />;
   }
 
   if (error) {

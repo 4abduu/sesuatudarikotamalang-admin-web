@@ -60,11 +60,11 @@ export function CreatorReportDetail({
               <div className="overflow-x-auto rounded-lg border border-border">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Produk</TableHead>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead className="pl-4">Produk</TableHead>
                       <TableHead className="text-right">Jumlah</TableHead>
                       <TableHead className="text-right">Harga</TableHead>
-                      <TableHead className="text-right">Omzet</TableHead>
+                      <TableHead className="pr-4 text-right">Omzet</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -77,13 +77,13 @@ export function CreatorReportDetail({
                     ) : (
                       report.sales.map((s, i) => (
                         <TableRow key={`${s.productId}-${s.variantLabel ?? ""}-${s.price}-${i}`}>
-                          <TableCell>
+                          <TableCell className="pl-4">
                             <p className="font-medium">{s.productName}</p>
                             <p className="text-xs text-muted-foreground">{variantText(s.variantLabel)}</p>
                           </TableCell>
                           <TableCell className="text-right">{s.quantity}</TableCell>
                           <TableCell className="text-right">{formatRupiah(s.price)}</TableCell>
-                          <TableCell className="text-right">{formatRupiah(s.revenue)}</TableCell>
+                          <TableCell className="pr-4 text-right">{formatRupiah(s.revenue)}</TableCell>
                         </TableRow>
                       ))
                     )}
@@ -97,9 +97,9 @@ export function CreatorReportDetail({
               <div className="overflow-x-auto rounded-lg border border-border">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Produk</TableHead>
-                      <TableHead className="text-right">Stok</TableHead>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead className="pl-4">Produk</TableHead>
+                      <TableHead className="pr-4 text-right">Stok</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -112,11 +112,11 @@ export function CreatorReportDetail({
                     ) : (
                       report.stock.map((s, i) => (
                         <TableRow key={`${s.productId}-${s.variantLabel ?? ""}-${i}`}>
-                          <TableCell>
+                          <TableCell className="pl-4">
                             <p className="font-medium">{s.productName}</p>
                             <p className="text-xs text-muted-foreground">{variantText(s.variantLabel)}</p>
                           </TableCell>
-                          <TableCell className="text-right">{s.stock}</TableCell>
+                          <TableCell className="pr-4 text-right">{s.stock}</TableCell>
                         </TableRow>
                       ))
                     )}

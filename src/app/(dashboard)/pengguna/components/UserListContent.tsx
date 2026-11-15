@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { AdminLoadingState } from "@/components/shared/AdminLoadingState";
 import {
   Select,
   SelectContent,
@@ -154,11 +154,7 @@ export function UserListContent() {
           </Button>
         </div>
       ) : loading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-xl" />
-          ))}
-        </div>
+        <AdminLoadingState message="Memuat data pengguna…" />
       ) : users.length === 0 ? (
         <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
           Tidak ada pengguna yang cocok.

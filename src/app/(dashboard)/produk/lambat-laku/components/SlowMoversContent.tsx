@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Hourglass, Loader2, RefreshCw } from "lucide-react";
-import { EmptyState } from "@/app/(dashboard)/components/admin-ui";
+import { EmptyState, AdminLoadingState } from "@/app/(dashboard)/components/admin-ui";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,11 +67,7 @@ export function SlowMoversContent() {
   });
 
   if (loading) {
-    return (
-      <div className="grid min-h-[300px] place-items-center rounded-xl border border-border bg-card">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AdminLoadingState message="Memuat data produk lambat laku…" minHeight="min-h-[300px]" />;
   }
 
   if (error || !data) {
@@ -123,23 +119,23 @@ export function SlowMoversContent() {
           />
         </Card>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <Card className="overflow-hidden p-0">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Produk</TableHead>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="pl-4">Produk</TableHead>
                 <TableHead>Kreator</TableHead>
                 <TableHead>Acuan hitungan</TableHead>
                 <TableHead>Lama tidak laku</TableHead>
                 <TableHead>Stok</TableHead>
                 <TableHead>Tingkat</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
+                <TableHead className="pr-4 text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pageItems.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell>
+                  <TableCell className="pl-4">
                     <p className="font-semibold">{p.name}</p>
                     <p className="text-xs text-muted-foreground">{formatRupiah(p.price)}</p>
                   </TableCell>
@@ -155,7 +151,7 @@ export function SlowMoversContent() {
                       {p.level === "tarik" ? "Siap ditarik" : "Peringatan"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="pr-4 text-right">
                     <Button
                       size="sm"
                       variant="outline"
@@ -169,16 +165,18 @@ export function SlowMoversContent() {
               ))}
             </TableBody>
           </Table>
-          <PaginationBar
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-            pageSizeOptions={[10, 20, 50]}
-          />
-        </div>
+          <div className="border-t border-border px-4 py-3">
+            <PaginationBar
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[10, 20, 50]}
+            />
+          </div>
+        </Card>
       )}
 
       <ProductActionReasonDialog

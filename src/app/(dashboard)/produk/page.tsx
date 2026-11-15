@@ -1,7 +1,7 @@
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
 import { ClipboardCheck, Plus, TrendingDown } from "lucide-react";
-import { AdminPageHeader } from "@/app/(dashboard)/components/admin-ui";
+import { AdminPageHeader, AdminLoadingState } from "@/app/(dashboard)/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { ProductListContent } from "./components/ProductListContent";
 
@@ -34,7 +34,9 @@ export default function ProdukAdminPage() {
       </AdminPageHeader>
 
       {/* Konten Modular List Produk Terhubung API */}
-      <ProductListContent />
+      <Suspense fallback={<AdminLoadingState message="Memuat daftar produk..." />}>
+        <ProductListContent />
+      </Suspense>
     </div>
   );
 }

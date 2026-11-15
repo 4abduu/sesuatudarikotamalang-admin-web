@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiFetch, ApiError } from "@/lib/api";
+import { olshopPayload } from "@/lib/olshop";
 import {
   ProductFormFields,
   emptyInitialValues,
@@ -168,7 +169,7 @@ export function AdminTambahProdukContent() {
           images: syncProduct.images,
           ...(syncProduct.imageVariants.length > 0 ? { imageVariants: syncProduct.imageVariants } : {}),
           isLimited: values.limited,
-          shopeeUrl: values.shopeeUrl?.trim() || undefined,
+          ...(values.olshop ? olshopPayload(values.olshop) : {}),
           artisanId: sellerId,
           ...(hasOptions ? { variantOptions: parsedOptions, variantStocks } : { stock: singleStock }),
         }),

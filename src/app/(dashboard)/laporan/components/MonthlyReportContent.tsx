@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, FileBarChart, Loader2, Lock, LockOpen, Printer, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { EmptyState, StatCard } from "@/app/(dashboard)/components/admin-ui";
+import { EmptyState, StatCard, AdminLoadingState } from "@/app/(dashboard)/components/admin-ui";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -134,9 +134,7 @@ export function MonthlyReportContent() {
       </Alert>
 
       {loading ? (
-        <div className="grid min-h-[260px] place-items-center rounded-xl border border-border bg-card">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <AdminLoadingState message="Memuat laporan bulanan…" minHeight="min-h-[260px]" />
       ) : error || !report ? (
         <div className="grid min-h-[240px] place-items-center rounded-xl border border-destructive/30 bg-destructive/5 p-10 text-center">
           <div className="flex max-w-md flex-col items-center gap-3">
@@ -169,29 +167,29 @@ export function MonthlyReportContent() {
               />
             </Card>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-border bg-card">
+            <Card className="overflow-hidden p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Kreator</TableHead>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="pl-4">Kreator</TableHead>
                     <TableHead className="text-right">Terjual</TableHead>
                     <TableHead className="text-right">Omzet</TableHead>
                     <TableHead className="text-right">Persen kreator</TableHead>
                     <TableHead className="text-right">Bagian kreator</TableHead>
                     <TableHead className="text-right">Bagian toko</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
+                    <TableHead className="pr-4 text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {report.creators.map((c) => (
                     <TableRow key={c.artisanId}>
-                      <TableCell className="font-semibold">{c.brandName}</TableCell>
+                      <TableCell className="pl-4 font-semibold">{c.brandName}</TableCell>
                       <TableCell className="text-right">{c.itemsSold}</TableCell>
                       <TableCell className="text-right">{formatRupiah(c.revenue)}</TableCell>
                       <TableCell className="text-right">{formatPercent(c.sharePercent)}</TableCell>
                       <TableCell className="text-right">{formatRupiah(c.creatorShare)}</TableCell>
                       <TableCell className="text-right">{formatRupiah(c.storeShare)}</TableCell>
-                      <TableCell>
+                      <TableCell className="pr-4">
                         <div className="flex justify-end gap-2">
                           <Button type="button" size="sm" variant="outline" onClick={() => setDetail(c)}>
                             Detail
@@ -212,7 +210,7 @@ export function MonthlyReportContent() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </Card>
           )}
         </>
       )}

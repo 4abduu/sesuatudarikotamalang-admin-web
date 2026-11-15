@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { ShoppingCart, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
-import { EmptyState } from "@/app/(dashboard)/components/admin-ui";
+import { EmptyState, AdminLoadingState } from "@/app/(dashboard)/components/admin-ui";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -120,14 +120,7 @@ export function OrderListContent() {
   };
 
   if (loading && orders.length === 0) {
-    return (
-      <div className="grid min-h-[350px] place-items-center rounded-xl border border-border bg-card p-12">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium">Memuat data pesanan…</p>
-        </div>
-      </div>
-    );
+    return <AdminLoadingState message="Memuat data pesanan…" />;
   }
 
   if (error && orders.length === 0) {

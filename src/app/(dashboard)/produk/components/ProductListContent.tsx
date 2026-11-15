@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PackageOpen, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { EmptyState } from "@/app/(dashboard)/components/admin-ui";
+import { EmptyState, AdminLoadingState } from "@/app/(dashboard)/components/admin-ui";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -31,6 +31,23 @@ export function ProductListContent() {
   const [togglingId, setTogglingId] = useState<number | string | null>(null);
   const [hideTarget, setHideTarget] = useState<Product | null>(null);
   const [stockTarget, setStockTarget] = useState<Product | null>(null);
+  const [initialVariantId, setInitialVariantId] = useState<string | undefined>(undefined);
+
+  const searchParams = useSearchParams();
+  const adjustStockParam = searchParams.get("adjustStock");
+  const variantIdParam = searchParams.get("variantId");
+
+  useEffect(() => {
+    if (adjustStockParam && products.length > 0) {
+      const target = products.find((p) => String(p.id) === String(adjustStockParam));
+      if (target) {
+        setStockTarget(target);
+        if (variantIdParam) {
+          setInitialVariantId(variantIdParam);
+        }
+      }
+    }
+  }, [adjustStockParam, variantIdParam, products]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -149,14 +166,7 @@ export function ProductListContent() {
   });
 
   if (loading) {
-    return (
-      <div className="grid min-h-[350px] place-items-center rounded-xl border border-border bg-card p-12">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium">Memuat data produk…</p>
-        </div>
-      </div>
-    );
+    return <AdminLoadingState message="Memuat data produk…" />;
   }
 
   if (error) {
@@ -237,9 +247,14 @@ export function ProductListContent() {
       <AdjustStockDialog
         open={stockTarget !== null}
         product={stockTarget}
-        onClose={() => setStockTarget(null)}
+        initialVariantId={initialVariantId}
+        onClose={() => {
+          setStockTarget(null);
+          setInitialVariantId(undefined);
+        }}
         onDone={() => {
           setStockTarget(null);
+          setInitialVariantId(undefined);
           void fetchData();
         }}
       />

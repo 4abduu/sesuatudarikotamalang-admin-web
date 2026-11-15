@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -25,7 +26,6 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useUserAuth } from "@/lib/user-auth";
 import { cn } from "@/lib/utils";
-import { LogoHand } from "@/components/site/line-art";
 
 type NavChild = {
   href: string;
@@ -70,8 +70,15 @@ const allHrefs = navItems.flatMap((item) =>
 function AdminLogo() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
-      <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-        <LogoHand className="h-5 w-5" strokeWidth={2.5} />
+      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg shadow-sm ring-1 ring-border/50">
+        <Image
+          src="/brand/logo_sesuatu_crop.png"
+          alt="Sesuatu DariKota Malang"
+          width={36}
+          height={36}
+          className="h-full w-full object-cover"
+          priority
+        />
       </span>
       <span className="flex flex-col leading-none">
         <span className="font-display text-sm font-bold text-foreground">
@@ -256,9 +263,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       {/* Main column */}
-      <div className="md:pl-64">
+      <div className="flex min-h-screen flex-col md:pl-64">
         {/* Top header */}
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border/80 bg-card/90 px-4 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-border/80 bg-card/90 px-4 backdrop-blur md:px-6">
           <button
             onClick={() => setMobileNavOpen(true)}
             aria-label="Buka menu"
@@ -266,6 +273,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
+          <div className="flex items-center gap-2 md:hidden">
+            <AdminLogo />
+          </div>
           <div className="hidden md:block">
             <p className="font-display text-sm font-semibold text-foreground">
               Panel Admin
@@ -294,7 +304,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="p-4 md:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

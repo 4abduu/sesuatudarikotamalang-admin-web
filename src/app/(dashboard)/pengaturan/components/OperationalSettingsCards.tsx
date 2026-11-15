@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Loader2, PackageMinus, Percent, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
+import { AdminLoadingState } from "@/components/shared/AdminLoadingState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -86,11 +87,7 @@ export function OperationalSettingsCards() {
   }
 
   if (loading) {
-    return (
-      <div className="flex h-24 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <AdminLoadingState message="Memuat pengaturan operasional…" minHeight="min-h-[140px]" />;
   }
 
   if (error || !loaded) {

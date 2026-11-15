@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, History, Loader2, RefreshCw, Search } from "lucide-react";
-import { EmptyState } from "@/app/(dashboard)/components/admin-ui";
+import { EmptyState, AdminLoadingState } from "@/app/(dashboard)/components/admin-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -124,9 +124,7 @@ export function StockHistoryContent() {
       </div>
 
       {loading ? (
-        <div className="grid min-h-[260px] place-items-center rounded-xl border border-border bg-card">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <AdminLoadingState message="Memuat riwayat stok…" minHeight="min-h-[260px]" />
       ) : error ? (
         <div className="grid min-h-[240px] place-items-center rounded-xl border border-destructive/30 bg-destructive/5 p-10 text-center">
           <div className="flex max-w-md flex-col items-center gap-3">
@@ -147,22 +145,22 @@ export function StockHistoryContent() {
           />
         </Card>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <Card className="overflow-hidden p-0">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Waktu</TableHead>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="pl-4">Waktu</TableHead>
                 <TableHead>Produk</TableHead>
                 <TableHead className="text-right">Perubahan</TableHead>
                 <TableHead className="text-right">Stok sesudah</TableHead>
                 <TableHead>Alasan</TableHead>
-                <TableHead>Oleh</TableHead>
+                <TableHead className="pr-4">Oleh</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {movements.map((m) => (
                 <TableRow key={m.id}>
-                  <TableCell className="whitespace-nowrap text-sm">{formatDateTimeId(m.createdAt)}</TableCell>
+                  <TableCell className="pl-4 whitespace-nowrap text-sm">{formatDateTimeId(m.createdAt)}</TableCell>
                   <TableCell>
                     <p className="font-semibold">{m.productName}</p>
                     <p className="text-xs text-muted-foreground">{variantText(m.variantLabel)}</p>
@@ -178,12 +176,12 @@ export function StockHistoryContent() {
                     {m.orderNumber && <p className="mt-1 text-xs text-muted-foreground">{m.orderNumber}</p>}
                     {m.note && <p className="mt-1 text-xs text-muted-foreground">{m.note}</p>}
                   </TableCell>
-                  <TableCell className="text-sm">{m.actorName ?? "Sistem"}</TableCell>
+                  <TableCell className="pr-4 text-sm">{m.actorName ?? "Sistem"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
+        </Card>
       )}
 
       {!loading && !error && total > 0 && (
