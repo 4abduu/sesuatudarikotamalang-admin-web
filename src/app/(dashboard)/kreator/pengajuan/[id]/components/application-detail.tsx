@@ -304,7 +304,7 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
                         alt={`Sampel ${i + 1}`}
                         className="h-full w-full object-cover transition-transform group-hover:scale-105"
                       />
-                      <span className="absolute bottom-2 right-2 rounded bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                      <span className="absolute bottom-2 right-2 rounded bg-black/60 p-1 text-white opacity-0 transition-opacity coarse:opacity-100 group-hover:opacity-100">
                         <ExternalLink className="h-3.5 w-3.5" />
                       </span>
                     </a>

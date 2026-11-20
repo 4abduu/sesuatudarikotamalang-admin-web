@@ -248,7 +248,7 @@ export function CameraScanner({
   const isScanning = status === "scanning";
 
   return (
-    <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className="relative mx-auto aspect-square max-h-[65dvh] w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       {/* Video selalu ada di DOM supaya srcObject tidak terputus saat state berubah */}
       <video ref={videoRef} className="h-full w-full object-cover" autoPlay muted playsInline />
       <canvas ref={canvasRef} className="hidden" />
@@ -294,7 +294,7 @@ export function CameraScanner({
 
       {/* Bingkai pemindai */}
       {isScanning && (
-        <div className="pointer-events-none absolute inset-8">
+        <div className="pointer-events-none absolute inset-[12%]">
           <span className="absolute left-0 top-0 h-10 w-10 border-l-4 border-t-4 border-primary" />
           <span className="absolute right-0 top-0 h-10 w-10 border-r-4 border-t-4 border-primary" />
           <span className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-primary" />
@@ -319,7 +319,7 @@ export function CameraScanner({
 
       {/* Lencana status */}
       <div className="absolute left-1/2 top-3 -translate-x-1/2">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1 text-[11px] font-semibold text-muted-foreground shadow-sm">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1 text-xs font-semibold text-muted-foreground shadow-sm">
           <QrCode className="h-3.5 w-3.5" />
           {isScanning ? (disabled ? "Memproses..." : "Kamera Aktif — Arahkan ke QR") : "Scanner Siap"}
         </span>

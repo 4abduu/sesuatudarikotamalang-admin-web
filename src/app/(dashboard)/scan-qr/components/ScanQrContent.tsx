@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Order } from "@/lib/types";
@@ -27,6 +27,13 @@ export function ScanQrContent() {
   const [cameraWanted, setCameraWanted] = useState(false);
   // Penjaga request: hanya satu request aktif walau QR yang sama terbaca berulang.
   const inFlightRef = useRef(false);
+  const resultRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (state !== "preview") return;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    resultRef.current?.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
+  }, [state]);
 
   // Mencari dan memvalidasi order sebelum diserahkan
   const handleVerifyOrder = async (rawCode: string) => {
@@ -102,11 +109,12 @@ export function ScanQrContent() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl lg:max-w-5xl">
       {state === "confirmed" && matchedOrder ? (
         <ScanConfirmedCard order={matchedOrder} onScanAgain={handleReset} />
       ) : (
-        <div className="mx-auto max-w-md">
+        <div className="mx-auto max-w-md lg:grid lg:max-w-5xl lg:grid-cols-2 lg:items-start lg:gap-6">
+          <div>
           {/* Kamera Pemindai. Tidak ikut di-remount saat pindah idle <-> preview. */}
           <CameraScanner
             onScan={handleVerifyOrder}
@@ -117,16 +125,23 @@ export function ScanQrContent() {
 
           {/* Input manual selalu tersedia sebagai cadangan (izin ditolak, tanpa HTTPS, kamera hitam, decoder gagal) */}
           {state !== "preview" && <ManualOrderInput onSearch={handleVerifyOrder} loading={loading} />}
+          </div>
 
           {/* Kartu Pratinjau Order & Tombol Konfirmasi Selesai */}
-          {state === "preview" && matchedOrder && (
-            <ScanResultCard
-              order={matchedOrder}
-              onConfirm={handleConfirmPickup}
-              loading={loading}
-              onCancel={handleReset}
-            />
-          )}
+          <div ref={resultRef} className="lg:min-w-0">
+            {state === "preview" && matchedOrder ? (
+              <ScanResultCard
+                order={matchedOrder}
+                onConfirm={handleConfirmPickup}
+                loading={loading}
+                onCancel={handleReset}
+              />
+            ) : (
+              <div className="mt-6 hidden rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center text-sm text-muted-foreground lg:block">
+                Hasil scan akan muncul di sini
+              </div>
+            )}
+          </div>
         </div>
       )}
 

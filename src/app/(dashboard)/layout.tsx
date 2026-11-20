@@ -61,7 +61,7 @@ export default function AuthedLayout({
 
   if (!hydrated || checkingServer || !user || user.role !== "admin") {
     return (
-      <div className="grid min-h-screen place-items-center bg-muted/40">
+      <div className="grid min-h-dvh place-items-center bg-muted/40">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <p className="text-sm">Memeriksa sesi admin…</p>

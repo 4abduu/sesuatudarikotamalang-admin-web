@@ -89,7 +89,7 @@ export function MonthlyReportContent() {
         <div className="flex items-center gap-3">
           <Input
             type="month"
-            className="w-[200px]"
+            className="w-full sm:w-[200px]"
             value={month}
             max={thisMonth}
             onChange={(e) => e.target.value && setMonth(e.target.value)}
@@ -167,7 +167,8 @@ export function MonthlyReportContent() {
               />
             </Card>
           ) : (
-            <Card className="overflow-hidden p-0">
+            <>
+            <Card className="hidden overflow-hidden p-0 xl:block">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -211,6 +212,26 @@ export function MonthlyReportContent() {
                 </TableBody>
               </Table>
             </Card>
+            <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
+              {report.creators.map((c) => (
+                <Card key={c.artisanId} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 break-words font-semibold">{c.brandName}</p>
+                    <span className="shrink-0 text-sm text-muted-foreground">{c.itemsSold} terjual</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t pt-3 text-sm">
+                    <span className="text-muted-foreground">Omzet</span><span className="text-right">{formatRupiah(c.revenue)}</span>
+                    <span className="text-muted-foreground">Bagian kreator</span><span className="text-right">{formatRupiah(c.creatorShare)}</span>
+                    <span className="text-muted-foreground">Bagian toko</span><span className="text-right">{formatRupiah(c.storeShare)}</span>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <Button type="button" size="sm" variant="outline" className="flex-1" onClick={() => setDetail(c)}>Detail</Button>
+                    <Button type="button" size="sm" variant="outline" className="flex-1" onClick={() => printCreatorReport(report.month, report.status, c)}>Cetak</Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+            </>
           )}
         </>
       )}

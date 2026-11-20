@@ -74,7 +74,7 @@ export function OrderStatusDonutCard({ statusDistribution = [] }: OrderStatusDon
                 <span className="font-display text-2xl font-bold text-foreground">
                   {totalOrdersCount}
                 </span>
-                <span className="text-[10px] text-muted-foreground">pesanan</span>
+                <span className="text-xs text-muted-foreground">pesanan</span>
               </div>
             </div>
             <ul className="flex-1 space-y-1.5">

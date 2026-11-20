@@ -80,8 +80,8 @@ function AdminLogo() {
           priority
         />
       </span>
-      <span className="flex flex-col leading-none">
-        <span className="font-display text-sm font-bold text-foreground">
+      <span className="flex min-w-0 flex-col leading-none">
+        <span className="truncate font-display text-sm font-bold text-foreground">
           DariKota Malang
         </span>
         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -110,7 +110,7 @@ function NavLink({
       href={href}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors coarse:py-3",
         active
           ? "bg-primary text-primary-foreground shadow-sm"
           : "text-foreground/70 hover:bg-secondary hover:text-foreground",
@@ -184,7 +184,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => toggleMenu(item.label)}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors coarse:py-3",
                   parentActive
                     ? "bg-primary/10 text-primary"
                     : "text-foreground/70 hover:bg-secondary hover:text-foreground",
@@ -208,7 +208,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                         href={child.href}
                         onClick={() => setMobileNavOpen(false)}
                         className={cn(
-                          "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
+                          "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors coarse:py-3",
                           childActive
                             ? "bg-primary text-primary-foreground shadow-sm"
                             : "text-foreground/60 hover:bg-secondary hover:text-foreground",
@@ -241,9 +241,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="paper-texture min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(168,69,43,0.08),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(107,122,61,0.08),_transparent_30%),linear-gradient(180deg,_#f7efdf_0%,_#f3ead7_48%,_#ede0c7_100%)] text-foreground">
+    <div className="paper-texture min-h-dvh bg-[radial-gradient(circle_at_top_left,_rgba(168,69,43,0.08),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(107,122,61,0.08),_transparent_30%),linear-gradient(180deg,_#f7efdf_0%,_#f3ead7_48%,_#ede0c7_100%)] text-foreground">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border/80 bg-card/95 shadow-[8px_0_30px_rgba(43,33,26,0.06)] backdrop-blur md:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border/80 bg-card/95 shadow-[8px_0_30px_rgba(43,33,26,0.06)] backdrop-blur lg:flex">
         <div className="border-b border-border/80 p-4">
           <AdminLogo />
         </div>
@@ -252,31 +252,31 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile sidebar (Sheet) */}
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent side="left" className="w-72 bg-card p-0">
+        <SheetContent side="left" className="w-72 max-w-[85vw] bg-card p-0">
           <SheetHeader className="border-b border-border/80 bg-card/95">
             <SheetTitle className="font-display">
               <AdminLogo />
             </SheetTitle>
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto p-3">{navList}</div>
+          <div className="flex-1 overflow-y-auto p-3 pb-[env(safe-area-inset-bottom)]">{navList}</div>
         </SheetContent>
       </Sheet>
 
       {/* Main column */}
-      <div className="flex min-h-screen flex-col md:pl-64">
+      <div className="flex min-h-dvh min-w-0 flex-col lg:pl-64">
         {/* Top header */}
-        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-border/80 bg-card/90 px-4 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-20 flex min-h-16 shrink-0 items-center gap-3 border-b border-border/80 bg-card/90 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:px-6">
           <button
             onClick={() => setMobileNavOpen(true)}
             aria-label="Buka menu"
-            className="grid h-9 w-9 place-items-center rounded-lg text-foreground/70 hover:bg-secondary/80 md:hidden"
+            className="grid h-9 w-9 place-items-center rounded-lg text-foreground/70 hover:bg-secondary/80 lg:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
             <AdminLogo />
           </div>
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <p className="font-display text-sm font-semibold text-foreground">
               Panel Admin
             </p>
@@ -285,7 +285,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </p>
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <div className="text-right">
+            <div className="hidden text-right sm:block">
               <p className="text-xs font-semibold text-foreground">
                 {adminName || "Admin"}
               </p>

@@ -45,18 +45,18 @@ export function PendingRefundsCard({
           {pendingRefunds.slice(0, 5).map((item) => (
             <div
               key={item.id}
-              className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between text-xs"
+              className="flex min-w-0 flex-col gap-2 p-3 text-xs sm:flex-row sm:items-center sm:justify-between"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-bold text-foreground">{item.orderNumber}</span>
-                    <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-[10px] text-amber-700 dark:text-amber-300">
+                    <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-xs text-amber-700 dark:text-amber-300">
                       {item.cancelReason ? item.cancelReason.replace("_", " ") : "Perlu refund"}
                     </Badge>
                   </div>
-                  <p className="text-muted-foreground mt-0.5">
+                  <p className="break-words text-muted-foreground mt-0.5">
                     {item.buyerName} · {formatRupiah(item.totalAmount)}
                   </p>
                 </div>

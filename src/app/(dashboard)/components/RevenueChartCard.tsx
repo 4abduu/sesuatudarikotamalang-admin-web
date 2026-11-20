@@ -54,6 +54,8 @@ export function RevenueChartCard({ revenueByDay, revenue7Days }: RevenueChartCar
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               axisLine={false}
               tickLine={false}
+              interval="preserveStartEnd"
+              minTickGap={16}
             />
             <Tooltip
               cursor={{ fill: "var(--muted)" }}

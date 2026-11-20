@@ -116,6 +116,10 @@ export function PaginationBar({
               />
             </PaginationItem>
 
+            <span className="px-2 text-sm text-muted-foreground sm:hidden">
+              Halaman {page} dari {totalPages}
+            </span>
+            <div className="hidden items-center sm:flex">
             {getPageNumbers().map((p, idx) => {
               if (p === "ellipsis") {
                 return (
@@ -140,6 +144,7 @@ export function PaginationBar({
                 </PaginationItem>
               );
             })}
+            </div>
 
             <PaginationItem>
               <PaginationNext

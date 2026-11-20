@@ -52,7 +52,7 @@ export function ContactSettingsCard({
             value={whatsappNumber}
             onChange={(e) => onWhatsappChange(e.target.value)}
             placeholder="+6281234567890"
-            className="max-w-[280px]"
+            className="w-full sm:max-w-[280px]"
             disabled={loading}
           />
           <p className="text-xs text-muted-foreground">
@@ -71,7 +71,7 @@ export function ContactSettingsCard({
             value={notificationEmail}
             onChange={(e) => onEmailChange(e.target.value)}
             placeholder="admin@darikotamalang.id"
-            className="max-w-[320px]"
+            className="w-full sm:max-w-[320px]"
             disabled={loading}
           />
           <p className="text-xs text-muted-foreground">

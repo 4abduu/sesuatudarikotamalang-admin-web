@@ -26,15 +26,15 @@ export function UpcomingPickupsCard({ upcomingPickups = [] }: UpcomingPickupsCar
               key={o.id}
               className="rounded-lg border border-border bg-background/60 p-3"
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-display text-sm font-semibold text-foreground">
+              <div className="flex min-w-0 items-center justify-between gap-2">
+                <span className="min-w-0 truncate font-display text-sm font-semibold text-foreground">
                   {o.orderNumber}
                 </span>
                 <span className="inline-flex items-center rounded-full bg-accent/15 px-2.5 py-0.5 text-xs font-semibold text-accent">
                   Lunas
                 </span>
               </div>
-              <p className="mt-1 text-sm text-foreground">{o.user?.name ?? "Pelanggan"}</p>
+              <p className="mt-1 min-w-0 break-words text-sm text-foreground">{o.user?.name ?? "Pelanggan"}</p>
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
                 {o.items?.[0]?.product?.name ?? "Produk"}
                 {(o.items?.length ?? 0) > 1 ? ` (+${(o.items?.length ?? 0) - 1} lainnya)` : ""}

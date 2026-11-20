@@ -39,7 +39,7 @@ export function ProductTable({
   return (
     <>
       {/* Desktop table */}
-      <Card className="hidden p-0 md:block">
+      <Card className="hidden p-0 xl:block">
         <Table>
           <TableHeader>
             <TableRow className="bg-secondary/40 hover:bg-secondary/40">
@@ -90,7 +90,7 @@ export function ProductTable({
                     <div className="flex flex-col items-start gap-1">
                       <span className="text-sm font-medium text-foreground">{sellerName}</span>
                       {isOfficial && (
-                        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[10px] font-semibold text-primary">
+                        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-xs font-semibold text-primary">
                           Official Store
                         </Badge>
                       )}
@@ -155,12 +155,12 @@ export function ProductTable({
                           {p.isActive ? "Aktif" : "Nonaktif"}
                         </Button>
                         {p.displayStatus === "ditarik" && (
-                          <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-[10px] text-destructive">
+                          <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-xs text-destructive">
                             Ditarik
                           </Badge>
                         )}
                         {p.displayStatus === "disembunyikan" && (
-                          <Badge variant="outline" className="border-muted-foreground/30 bg-muted/40 text-[10px] text-muted-foreground">
+                          <Badge variant="outline" className="border-muted-foreground/30 bg-muted/40 text-xs text-muted-foreground">
                             Disembunyikan
                           </Badge>
                         )}
@@ -201,7 +201,7 @@ export function ProductTable({
       </Card>
 
       {/* Mobile cards */}
-      <div className="space-y-3 md:hidden">
+      <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
         {products.map((p) => {
           const totalStock = p.variants?.reduce((sum, v) => sum + v.stock, 0) ?? 0;
           const lowVariants = p.variants?.filter((v) => v.stock < LOW_STOCK_THRESHOLD) ?? [];
@@ -244,7 +244,7 @@ export function ProductTable({
                         <Badge
                           variant="secondary"
                           className={cn(
-                            "cursor-pointer text-[10px] font-medium",
+                            "cursor-pointer text-xs font-medium",
                             p.displayStatus === "menunggu"
                               ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
                               : "bg-destructive/15 text-destructive"
@@ -261,7 +261,7 @@ export function ProductTable({
                           onClick={() => onToggleActive(p.id, p.isActive)}
                           disabled={isToggling}
                           className={cn(
-                            "h-6 gap-1 px-2 text-[10px] font-semibold",
+                          "h-6 gap-1 px-2 text-xs font-semibold coarse:h-10",
                             p.isActive
                               ? "border-accent/40 bg-accent/10 text-accent"
                               : "border-muted-foreground/30 bg-muted/40 text-muted-foreground"
@@ -293,7 +293,7 @@ export function ProductTable({
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
                     Harga
                   </p>
                   <p className="text-sm font-semibold text-foreground">
@@ -301,7 +301,7 @@ export function ProductTable({
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
                     Stok
                   </p>
                   <p

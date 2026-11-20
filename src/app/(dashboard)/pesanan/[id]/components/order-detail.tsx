@@ -925,7 +925,7 @@ function OrderDetail({
                   }}
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {quotaExhausted
                   ? "Kuota perpanjangan habis"
                   : `Terpakai ${Math.round(

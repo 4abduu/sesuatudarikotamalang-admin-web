@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
@@ -41,11 +41,18 @@ export const metadata: Metadata = {
   authors: [{ name: "Sesuatu DariKota Malang" }],
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f2e8d5",
+};
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="id" suppressHydrationWarning>
       <body
-        className={`${baloo.variable} ${poppins.variable} antialiased bg-background text-foreground min-h-screen`}
+        className={`${baloo.variable} ${poppins.variable} antialiased bg-background text-foreground min-h-dvh`}
       >
         {children}
         <Toaster richColors position="top-center" />

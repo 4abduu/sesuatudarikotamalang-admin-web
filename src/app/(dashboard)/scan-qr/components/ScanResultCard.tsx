@@ -39,17 +39,17 @@ export function ScanResultCard({ order, onConfirm, loading, onCancel }: ScanResu
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-start justify-between gap-3 rounded-lg border border-border bg-muted/30 p-4">
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
             <p className="font-display text-lg font-bold text-foreground">
               {order.orderNumber}
             </p>
             <div className="mt-1 flex items-center gap-1.5 text-sm text-foreground">
               <User className="h-3.5 w-3.5 text-muted-foreground" />
-              {order.user?.name ?? "Pelanggan"}
+              <span className="break-words">{order.user?.name ?? "Pelanggan"}</span>
             </div>
             <p className="mt-1 text-sm font-medium text-foreground">
-              {firstItem?.product?.name || "Produk"}
+              <span className="break-words">{firstItem?.product?.name || "Produk"}</span>
               {remainingCount > 0 ? ` (+${remainingCount} item lainnya)` : ""}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -66,7 +66,7 @@ export function ScanResultCard({ order, onConfirm, loading, onCancel }: ScanResu
               </span>
             </div>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-2">
+          <div className="flex shrink-0 items-center justify-between gap-2 sm:flex-col sm:items-end">
             <OrderStatusBadge status={order.status} />
             <p className="font-display text-base font-bold text-foreground">
               {formatRupiah(order.totalAmount)}
@@ -74,23 +74,25 @@ export function ScanResultCard({ order, onConfirm, loading, onCancel }: ScanResu
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="sticky bottom-0 -mx-6 border-t bg-card px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:p-0">
+          <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={onCancel}
             disabled={loading}
-            className="flex-1"
+            className="h-12 flex-1 text-base"
           >
             Batal
           </Button>
           <Button
             onClick={onConfirm}
             disabled={loading}
-            className="flex-1 gap-2 bg-primary hover:bg-primary/90"
+            className="h-12 flex-1 gap-2 text-base bg-primary hover:bg-primary/90"
           >
             <CheckCircle2 className="h-5 w-5" />
             {loading ? "Menyelesaikan…" : "Konfirmasi Ambil"}
           </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -129,18 +131,20 @@ export function ScanConfirmedCard({ order, onScanAgain }: ScanConfirmedCardProps
             Status order diperbarui menjadi Selesai
           </span>
         )}
-        <div className="mt-3 flex gap-2">
+        <div className="sticky bottom-0 -mx-6 mt-3 border-t bg-card px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:p-0">
+          <div className="flex gap-2">
           <Button
             onClick={onScanAgain}
             variant="outline"
-            className="h-10 gap-2"
+            className="h-12 flex-1 gap-2 text-base"
           >
             <RefreshCw className="h-4 w-4" />
             Scan Pesanan Lain
           </Button>
-          <Button asChild className="h-10">
+          <Button asChild className="h-12 flex-1 text-base">
             <Link href="/pesanan">Lihat Daftar Pesanan</Link>
           </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

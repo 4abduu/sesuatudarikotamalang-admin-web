@@ -55,7 +55,7 @@ export function ReservationSettingsCard({
             max={1440}
             value={holdMinutes}
             onChange={(e) => onHoldMinutesChange(Number(e.target.value))}
-            className="max-w-[180px]"
+            className="w-full sm:max-w-[180px]"
             disabled={loading}
           />
           <p className="text-xs text-muted-foreground">

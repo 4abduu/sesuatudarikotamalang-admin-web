@@ -124,7 +124,7 @@ export function CreatorListTab({ artisans, onStatusUpdated, defaultCreatorShareP
                           {c.brandName}
                         </h3>
                         {c.isOfficial && (
-                          <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[10px] font-semibold text-primary">
+                          <Badge variant="outline" className="border-primary/40 bg-primary/10 text-xs font-semibold text-primary">
                             Official Store
                           </Badge>
                         )}
@@ -179,7 +179,7 @@ export function CreatorListTab({ artisans, onStatusUpdated, defaultCreatorShareP
                       )}
 
                       {c.isOfficial && (
-                        <span className="text-[11px] font-medium text-muted-foreground italic">
+                        <span className="text-xs font-medium text-muted-foreground italic">
                           Toko Resmi (Permanen Aktif)
                         </span>
                       )}

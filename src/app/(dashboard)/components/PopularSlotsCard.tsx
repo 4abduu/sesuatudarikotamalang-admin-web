@@ -49,7 +49,7 @@ export function PopularSlotsCard({ slotDistribution }: PopularSlotsCardProps) {
               {s.count}
             </span>
             {s.isFull && (
-              <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-bold text-destructive">
+              <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-bold text-destructive">
                 Penuh
               </span>
             )}

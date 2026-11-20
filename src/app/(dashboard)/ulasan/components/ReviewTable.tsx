@@ -50,7 +50,7 @@ export function ReviewTable({
   return (
     <>
       {/* Desktop table */}
-      <Card className="mt-3 hidden lg:block overflow-hidden py-0">
+      <Card className="mt-3 hidden xl:block overflow-hidden py-0">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -173,7 +173,7 @@ export function ReviewTable({
       </Card>
 
       {/* Mobile stacked cards */}
-      <div className="mt-3 flex flex-col gap-3 lg:hidden">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:hidden">
         {reviews.map((r) => {
           const isHidden = r.status === "disembunyikan";
           const isLoading = actionLoadingId === r.id;

@@ -25,7 +25,7 @@ export function ManualOrderInput({ onSearch, loading }: ManualOrderInputProps) {
         <button
           type="button"
           onClick={() => setShow(true)}
-          className="text-xs font-medium text-muted-foreground hover:text-primary transition underline"
+          className="px-2 py-2 text-xs font-medium text-muted-foreground transition underline hover:text-primary"
         >
           Atau input nomor pesanan manual (SDK-XXXX)
         </button>
@@ -40,10 +40,15 @@ export function ManualOrderInput({ onSearch, loading }: ManualOrderInputProps) {
           value={inputVal}
           onChange={(e) => setInputVal(e.target.value)}
           placeholder="Masukkan No. Pesanan (mis. SDK-1234)"
-          className="h-10 text-sm uppercase"
+          className="h-11 text-base uppercase"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          enterKeyHint="search"
           disabled={loading}
         />
-        <Button type="submit" disabled={loading || !inputVal.trim()} className="h-10 gap-1.5 px-4">
+        <Button type="submit" disabled={loading || !inputVal.trim()} className="h-11 gap-1.5 px-4">
           <Search className="h-4 w-4" />
           Cari
         </Button>
@@ -52,7 +57,7 @@ export function ManualOrderInput({ onSearch, loading }: ManualOrderInputProps) {
         <button
           type="button"
           onClick={() => setShow(false)}
-          className="text-[11px] text-muted-foreground hover:underline"
+          className="px-2 py-2 text-xs text-muted-foreground hover:underline"
         >
           Tutup input manual
         </button>

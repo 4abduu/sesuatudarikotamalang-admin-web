@@ -10,7 +10,7 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   closestCenter,
   useSensor,
@@ -219,7 +219,7 @@ function SortableTile({
   const selectedFor = (option: string) => item.variantCombination?.find((part) => part.option === option)?.value ?? "none";
 
   const iconButton =
-    "absolute flex size-6 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 disabled:opacity-30 disabled:hover:bg-black/60";
+    "absolute flex size-6 coarse:size-9 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 disabled:opacity-30 disabled:hover:bg-black/60";
 
   return (
     <div ref={setNodeRef} style={style} className="w-28 shrink-0 sm:w-32">
@@ -230,7 +230,7 @@ function SortableTile({
         tabIndex={0}
         aria-label={`Lihat foto ${position + 1}`}
         className={cn(
-          "relative aspect-square overflow-hidden rounded-xl border bg-muted touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          "relative aspect-square overflow-hidden rounded-xl border bg-muted touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
           disabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
           isRejected && "ring-2 ring-destructive border-destructive"
         )}
@@ -252,12 +252,12 @@ function SortableTile({
           className="h-full w-full object-cover"
         />
         {isMain && (
-          <span className="absolute left-1.5 top-1.5 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+          <span className="absolute left-1.5 top-1.5 rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
             Utama
           </span>
         )}
         {isRejected && (
-          <span className="absolute left-1.5 bottom-1.5 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground">
+          <span className="absolute left-1.5 bottom-1.5 rounded-full bg-destructive px-2 py-0.5 text-xs font-semibold text-destructive-foreground">
             Ditolak
           </span>
         )}
@@ -274,7 +274,7 @@ function SortableTile({
                 onRemove();
               }}
             >
-              <X className="size-3.5" />
+              <X className="size-3.5 coarse:size-4" />
             </button>
             <button
               type="button"
@@ -288,7 +288,7 @@ function SortableTile({
                 onShift(-1);
               }}
             >
-              <ChevronLeft className="size-4" />
+              <ChevronLeft className="size-4 coarse:size-4" />
             </button>
             <button
               type="button"
@@ -302,7 +302,7 @@ function SortableTile({
                 onShift(1);
               }}
             >
-              <ChevronRight className="size-4" />
+              <ChevronRight className="size-4 coarse:size-4" />
             </button>
           </>
         )}
@@ -398,7 +398,7 @@ export function PhotoManager({
   const justDraggedRef = useRef(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );

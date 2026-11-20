@@ -107,7 +107,7 @@ export function AboutSettingsCard({ settings, onSave }: AboutSettingsCardProps) 
                 value={emailDraft}
                 onChange={(e) => setEmailDraft(e.target.value)}
                 placeholder="halo@sesuatudarikota.com"
-                className="max-w-[320px]"
+                className="w-full sm:max-w-[320px]"
                 disabled={saving}
               />
               <p className="text-xs text-muted-foreground">

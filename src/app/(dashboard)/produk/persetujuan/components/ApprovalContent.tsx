@@ -77,9 +77,9 @@ export function ApprovalContent() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
         <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
-          <SelectTrigger className="w-[220px]" aria-label="Filter status">
+          <SelectTrigger className="w-full sm:w-[220px]" aria-label="Filter status">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

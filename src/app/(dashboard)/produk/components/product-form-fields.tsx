@@ -466,7 +466,7 @@ export function ProductFormFields({
                 <p className="text-xs text-destructive">{errors.price}</p>
               )}
               {showPriceHint && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Format: {formatRupiah(priceNum)}
                 </p>
               )}
@@ -479,7 +479,7 @@ export function ProductFormFields({
                 onChange={(e) => setShortDesc(e.target.value)}
                 placeholder="Satu kalimat penjelas produk"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Dipakai di kartu produk & hasil pencarian.
               </p>
             </div>
@@ -572,7 +572,7 @@ export function ProductFormFields({
                 placeholder="0"
                 className="max-w-xs"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Produk tanpa varian. Klik &ldquo;Tambah Opsi&rdquo; kalau produk
                 punya motif/ukuran/warna berbeda.
               </p>
@@ -586,13 +586,13 @@ export function ProductFormFields({
                 per kombinasi.
               </p>
               {mode === "create" ? (
-                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                   Periksa semua opsi dan nilainya sebelum menyimpan. Setelah
                   produk dibuat dan disetujui admin, struktur varian tidak
                   dapat diubah; yang dapat diedit hanya stok tiap kombinasi.
                 </p>
               ) : (
-                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                   Struktur varian sudah tersimpan dan dikunci agar stok,
                   pesanan, dan riwayat tetap konsisten. Anda masih bisa
                   mengubah stok setiap kombinasi di bawah.
@@ -662,12 +662,12 @@ export function ProductFormFields({
                 <Label className="text-sm font-semibold">
                   Stok per Kombinasi
                 </Label>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {combos.length} kombinasi
                 </span>
               </div>
               {!optionsComplete ? (
-                <p className="rounded-lg border border-dashed border-border bg-secondary/30 px-3 py-2 text-[11px] text-muted-foreground">
+                  <p className="rounded-lg border border-dashed border-border bg-secondary/30 px-3 py-2 text-xs text-muted-foreground">
                   Lengkapi nama opsi dan minimal 1 nilai di tiap opsi untuk
                   membuat matriks stok.
                 </p>
@@ -1107,7 +1107,7 @@ function StoryAiDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display">
             <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary">
@@ -1227,7 +1227,7 @@ function StoryAiDialog({
               <CheckCircle2 className="h-4 w-4" />
               Gunakan Draft Ini
             </Button>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Button
                 type="button"
                 variant="outline"
@@ -1300,7 +1300,7 @@ function StoryAiPointField({
         <Label className="text-sm">{label}</Label>
         <span
           className={cn(
-            "text-[11px] tabular-nums",
+            "text-xs tabular-nums",
             over ? "text-destructive" : "text-muted-foreground"
           )}
         >

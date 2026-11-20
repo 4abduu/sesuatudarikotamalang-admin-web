@@ -127,7 +127,7 @@ export function OperationalSettingsCards() {
               inputMode="numeric"
               min={1}
               max={100}
-              className="w-[200px]"
+              className="w-full sm:w-[200px]"
               value={threshold}
               onChange={(e) => setThreshold(e.target.value)}
               disabled={savingThreshold}
@@ -169,7 +169,7 @@ export function OperationalSettingsCards() {
               min={0}
               max={100}
               step="0.5"
-              className="w-[200px]"
+              className="w-full sm:w-[200px]"
               value={share}
               onChange={(e) => setShare(e.target.value)}
               disabled={savingShare}

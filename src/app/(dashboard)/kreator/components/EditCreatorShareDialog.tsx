@@ -119,7 +119,7 @@ export function EditCreatorShareDialog({
               min={0}
               max={100}
               step="0.5"
-              className="w-[200px]"
+              className="w-full sm:w-[200px]"
               value={percentText}
               onChange={(e) => setPercentText(e.target.value)}
               disabled={saving}

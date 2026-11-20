@@ -67,7 +67,7 @@ export function StockHistoryContent() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <div className="flex flex-1 gap-2">
           <Input
             placeholder="Cari nama produk"
@@ -88,7 +88,7 @@ export function StockHistoryContent() {
             setReason(v as StockReason | "all");
           }}
         >
-          <SelectTrigger className="w-full lg:w-[200px]" aria-label="Filter alasan">
+          <SelectTrigger className="w-full sm:w-[200px]" aria-label="Filter alasan">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -102,7 +102,7 @@ export function StockHistoryContent() {
         </Select>
         <Input
           type="date"
-          className="lg:w-[160px]"
+          className="w-full sm:w-[160px]"
           value={from}
           onChange={(e) => {
             setPage(1);
@@ -112,7 +112,7 @@ export function StockHistoryContent() {
         />
         <Input
           type="date"
-          className="lg:w-[160px]"
+          className="w-full sm:w-[160px]"
           value={to}
           min={from || undefined}
           onChange={(e) => {
@@ -145,7 +145,8 @@ export function StockHistoryContent() {
           />
         </Card>
       ) : (
-        <Card className="overflow-hidden p-0">
+        <>
+        <Card className="hidden overflow-hidden p-0 xl:block">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -182,6 +183,28 @@ export function StockHistoryContent() {
             </TableBody>
           </Table>
         </Card>
+        <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
+          {movements.map((m) => (
+            <Card key={m.id} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="break-words font-semibold">{m.productName}</p>
+                  <p className="break-words text-xs text-muted-foreground">{variantText(m.variantLabel)}</p>
+                </div>
+                <span className={`shrink-0 font-semibold ${m.delta > 0 ? "text-accent" : "text-destructive"}`}>
+                  {m.delta > 0 ? `+${m.delta}` : m.delta}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t pt-3 text-sm">
+                <span className="text-muted-foreground">Waktu</span><span className="text-right">{formatDateTimeId(m.createdAt)}</span>
+                <span className="text-muted-foreground">Stok sesudah</span><span className="text-right">{m.stockAfter}</span>
+                <span className="text-muted-foreground">Alasan</span><span className="text-right break-words">{STOCK_REASON_LABEL[m.reason] ?? m.reason}</span>
+                <span className="text-muted-foreground">Oleh</span><span className="text-right break-words">{m.actorName ?? "Sistem"}</span>
+              </div>
+            </Card>
+          ))}
+        </div>
+        </>
       )}
 
       {!loading && !error && total > 0 && (

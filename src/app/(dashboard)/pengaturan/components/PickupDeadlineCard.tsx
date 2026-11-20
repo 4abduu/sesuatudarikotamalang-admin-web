@@ -54,7 +54,7 @@ export function PickupDeadlineCard({
             onValueChange={(v) => onDeadlineChange(Number(v))}
             disabled={loading}
           >
-            <SelectTrigger id="pickup-deadline" className="w-[220px]">
+            <SelectTrigger id="pickup-deadline" className="w-full sm:w-[220px]">
               <SelectValue placeholder="Pilih batas hari" />
             </SelectTrigger>
             <SelectContent>

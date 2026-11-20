@@ -204,7 +204,7 @@ export function UserListContent() {
       )}
 
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{preview?.name}</DialogTitle>
             <DialogDescription>{preview?.email}</DialogDescription>

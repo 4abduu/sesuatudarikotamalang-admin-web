@@ -98,7 +98,7 @@ export function SlowMoversContent() {
 
       <div className="flex items-center gap-3">
         <Select value={level} onValueChange={(v) => setLevel(v as LevelFilter)}>
-          <SelectTrigger className="w-[220px]" aria-label="Filter tingkat">
+          <SelectTrigger className="w-full sm:w-[220px]" aria-label="Filter tingkat">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -119,7 +119,8 @@ export function SlowMoversContent() {
           />
         </Card>
       ) : (
-        <Card className="overflow-hidden p-0">
+        <>
+        <Card className="hidden overflow-hidden p-0 xl:block">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -177,6 +178,26 @@ export function SlowMoversContent() {
             />
           </div>
         </Card>
+        <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
+          {pageItems.map((p) => (
+            <Card key={p.id} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="break-words font-semibold">{p.name}</p>
+                  <p className="text-xs text-muted-foreground">{p.artisan.brandName} · {formatRupiah(p.price)}</p>
+                </div>
+                <Badge variant={p.level === "tarik" ? "destructive" : "secondary"}>{p.level === "tarik" ? "Siap ditarik" : "Peringatan"}</Badge>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t pt-3 text-sm">
+                <span className="text-muted-foreground">Acuan</span><span className="text-right">{p.referenceType === "ditambahkan" ? "Ditambahkan" : "Terjual terakhir"}</span>
+                <span className="text-muted-foreground">Lama</span><span className="text-right">{idleText(p)}</span>
+                <span className="text-muted-foreground">Stok</span><span className="text-right">{p.totalStock}</span>
+              </div>
+              <Button size="sm" variant="outline" className="mt-3 w-full text-destructive" onClick={() => setWithdrawTarget(p)}>Tarik Produk</Button>
+            </Card>
+          ))}
+        </div>
+        </>
       )}
 
       <ProductActionReasonDialog

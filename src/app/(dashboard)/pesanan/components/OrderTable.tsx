@@ -33,7 +33,7 @@ export function OrderTable({ orders }: OrderTableProps) {
   return (
     <>
       {/* Desktop / tablet table */}
-      <Card className="hidden overflow-hidden py-0 lg:block">
+      <Card className="hidden overflow-hidden py-0 xl:block">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -118,13 +118,13 @@ export function OrderTable({ orders }: OrderTableProps) {
                         {o.paymentMethod === "cod" ? "Cash/QRIS" : "Midtrans"}
                       </span>
                       {needsRefund && (
-                        <Badge variant="destructive" className="h-5 px-1.5 text-[10px] gap-1">
+                        <Badge variant="destructive" className="h-5 px-1.5 text-xs gap-1">
                           <AlertCircle className="h-3 w-3" />
                           Perlu Refund
                         </Badge>
                       )}
                       {o.refundStatus === "selesai" && (
-                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] text-accent border-accent/30 bg-accent/10">
+                        <Badge variant="secondary" className="h-5 px-1.5 text-xs text-accent border-accent/30 bg-accent/10">
                           Refund Selesai
                         </Badge>
                       )}
@@ -157,7 +157,7 @@ export function OrderTable({ orders }: OrderTableProps) {
       </Card>
 
       {/* Mobile stacked cards */}
-      <div className="flex flex-col gap-3 lg:hidden">
+      <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
         {orders.map((o) => {
           const firstItem = o.items?.[0];
           const remainingCount = (o.items?.length || 0) - 1;
@@ -190,7 +190,7 @@ export function OrderTable({ orders }: OrderTableProps) {
 
                 <div className="grid grid-cols-2 gap-3 border-t border-border pt-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       Produk
                     </p>
                     <p className="text-sm text-foreground font-medium">
@@ -201,7 +201,7 @@ export function OrderTable({ orders }: OrderTableProps) {
                       {(firstItem?.variant?.combination || []).join(" / ") || "Varian default"}
                     </p>
                     {sellerName && (
-                      <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                         <span>{sellerName}</span>
                         {isOfficial && (
                           <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[9px] px-1 py-0 text-primary">
@@ -212,7 +212,7 @@ export function OrderTable({ orders }: OrderTableProps) {
                     )}
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       Pickup
                     </p>
                     <p className="text-sm text-foreground">
@@ -223,7 +223,7 @@ export function OrderTable({ orders }: OrderTableProps) {
                       {o.pickupSlot} · {o.paymentMethod === "cod" ? "Cash/QRIS" : "Midtrans"}
                     </p>
                     {o.refundStatus === "selesai" && (
-                      <p className="mt-1 text-[11px] font-semibold text-accent">
+                      <p className="mt-1 text-xs font-semibold text-accent">
                         Refund Selesai
                       </p>
                     )}
@@ -232,7 +232,7 @@ export function OrderTable({ orders }: OrderTableProps) {
 
                 <div className="flex items-center justify-between border-t border-border pt-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       Total
                     </p>
                     <p className="font-display text-base font-bold text-foreground">

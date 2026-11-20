@@ -73,7 +73,7 @@ function HandPrintPattern() {
  */
 export function LoginBrandPanel() {
   return (
-    <section className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-primary px-6 pb-16 pt-10 lg:min-h-screen lg:items-start lg:justify-between lg:p-12 xl:p-16">
+    <section className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-primary px-6 pb-16 pt-10 lg:min-h-dvh lg:items-start lg:justify-between lg:p-12 xl:p-16">
       <HandPrintPattern />
 
       <LoginLogo className="w-32 animate-in fade-in zoom-in-95 duration-700 motion-reduce:animate-none sm:w-40 lg:w-40 xl:w-48" />
