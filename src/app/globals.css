@@ -48,9 +48,6 @@
 }
 
 :root {
-  --font-poppins: "Trebuchet MS", system-ui, sans-serif;
-  --font-baloo: "Trebuchet MS", system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   /* Sesuatu DariKota Malang — Heritage x Craft Market palette */
   --radius: 1rem;
 
