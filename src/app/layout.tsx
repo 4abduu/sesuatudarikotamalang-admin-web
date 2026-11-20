@@ -1,21 +1,6 @@
 import type { Metadata } from "next";
-import { Baloo_2, Poppins } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-
-const baloo = Baloo_2({
-  variable: "--font-baloo",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  display: "swap",
-});
-
-const poppins = Poppins({
-  variable: "--font-poppins",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Sesuatu DariKota Malang — Oleh-Oleh Artisan Kayutangan Heritage",
@@ -40,7 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="id" suppressHydrationWarning>
       <body
-        className={`${baloo.variable} ${poppins.variable} antialiased bg-background text-foreground min-h-screen`}
+        className="antialiased bg-background text-foreground min-h-screen"
       >
         {children}
         <Toaster richColors position="top-center" />
