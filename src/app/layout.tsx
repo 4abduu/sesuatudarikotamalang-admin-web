@@ -39,6 +39,11 @@ export const metadata: Metadata = {
     "kriya",
   ],
   authors: [{ name: "Sesuatu DariKota Malang" }],
+  icons: {
+    icon: "/brand/logo_sesuatu_crop.png",
+    shortcut: "/brand/logo_sesuatu_crop.png",
+    apple: "/brand/logo_sesuatu_crop.png",
+  },
 };
 
 export const viewport: Viewport = {
