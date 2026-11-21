@@ -201,7 +201,7 @@ export function ProductTable({
       </Card>
 
       {/* Mobile cards */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-3 xl:hidden">
         {products.map((p) => {
           const totalStock = p.variants?.reduce((sum, v) => sum + v.stock, 0) ?? 0;
           const lowVariants = p.variants?.filter((v) => v.stock < LOW_STOCK_THRESHOLD) ?? [];
@@ -315,7 +315,7 @@ export function ProductTable({
                   </p>
                 </div>
               </div>
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"

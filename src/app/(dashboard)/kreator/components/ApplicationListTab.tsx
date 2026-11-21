@@ -44,7 +44,7 @@ export function ApplicationListTab({ applications }: ApplicationListTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-4">
         {pageItems.map((app) => {
         const photos = app.samplePhotos ?? (app.sampleFileUrl ? [app.sampleFileUrl] : []);
         const displayPhotos = photos.slice(0, 5);

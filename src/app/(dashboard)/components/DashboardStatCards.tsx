@@ -17,7 +17,7 @@ export function DashboardStatCards({
   pendingRefundCount = 0,
 }: DashboardStatCardsProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5 [&>*:last-child]:col-span-2 xl:[&>*:last-child]:col-span-1">
       <StatCard
         label="Pesanan Hari Ini"
         value={ordersToday}

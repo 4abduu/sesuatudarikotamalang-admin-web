@@ -173,7 +173,7 @@ export function ReviewTable({
       </Card>
 
       {/* Mobile stacked cards */}
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:hidden">
+      <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-3 xl:hidden">
         {reviews.map((r) => {
           const isHidden = r.status === "disembunyikan";
           const isLoading = actionLoadingId === r.id;

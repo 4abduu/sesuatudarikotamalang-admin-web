@@ -87,7 +87,7 @@ export function CreatorListTab({ artisans, onStatusUpdated, defaultCreatorShareP
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-4">
         {pageItems.map((c) => {
         const isInactive = c.status === "nonaktif";
         const isToggling = togglingId === c.id;

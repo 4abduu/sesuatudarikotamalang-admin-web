@@ -149,7 +149,7 @@ export function SettingsContent() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:gap-6 [&>*]:min-w-0">
       {/* 1. Pengaturan Reservasi & Hold Stok */}
       <ReservationSettingsCard
         holdMinutes={holdMinutes}

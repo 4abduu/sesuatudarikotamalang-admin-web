@@ -160,9 +160,9 @@ export function UserListContent() {
           Tidak ada pengguna yang cocok.
         </p>
       ) : (
-        <ul className="divide-y rounded-xl border">
+        <ul className="grid gap-3 md:grid-cols-2">
           {users.map((u) => (
-            <li key={u.id} className="flex items-center gap-3 p-3">
+            <li key={u.id} className="flex min-w-0 flex-wrap items-center gap-3 rounded-xl border bg-card p-3">
               <button
                 type="button"
                 aria-label={`Lihat foto ${u.name}`}
