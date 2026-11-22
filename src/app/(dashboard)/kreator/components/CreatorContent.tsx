@@ -93,7 +93,6 @@ export function CreatorContent() {
           onStatusUpdated={handleStatusUpdated}
           defaultCreatorSharePercent={defaultCreatorSharePercent}
           onShareUpdated={(updated) => setArtisans((prev) => prev.map((artisan) => artisan.id === updated.id ? { ...artisan, creatorSharePercent: updated.creatorSharePercent, effectiveCreatorSharePercent: updated.effectiveCreatorSharePercent } : artisan))}
-          onPhotoRemoved={fetchData}
         />
       </TabsContent>
 

@@ -186,7 +186,13 @@ export function ProductFormFields({
     initialValues.story.process,
   );
   const [initialPhotoItems, setInitialPhotoItems] = useState<PhotoItem[]>(() =>
-    createPhotoItems(initialValues.existingImages ?? [], initialValues.initialImageVariants ?? [])
+    createPhotoItems(
+      initialValues.existingImages ?? [],
+      initialValues.initialImageVariants ?? [],
+      initialValues.variantOptions
+        .map((o) => ({ option: o.name.trim(), values: o.valuesText.split(",").map((v) => v.trim()).filter(Boolean) }))
+        .filter((o) => o.option && o.values.length > 0),
+    )
   );
   const [photoItems, setPhotoItems] = useState<PhotoItem[]>(initialPhotoItems);
 

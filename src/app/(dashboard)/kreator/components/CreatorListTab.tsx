@@ -22,7 +22,6 @@ import { RatingStars } from "@/components/site/rating-stars";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Artisan } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { RemoveAvatarDialog } from "@/app/(dashboard)/pengguna/components/RemoveAvatarDialog";
 import { EditCreatorShareDialog } from "./EditCreatorShareDialog";
 import { useClientPagination } from "@/hooks/useClientPagination";
 import { PaginationBar } from "@/components/shared/PaginationBar";
@@ -32,12 +31,10 @@ interface CreatorListTabProps {
   onStatusUpdated: (updatedId: number | string, newStatus: "aktif" | "nonaktif") => void;
   defaultCreatorSharePercent: number;
   onShareUpdated: (updated: { id: number | string; creatorSharePercent: number | null; effectiveCreatorSharePercent: number }) => void;
-  onPhotoRemoved?: () => void;
 }
 
-export function CreatorListTab({ artisans, onStatusUpdated, defaultCreatorSharePercent, onShareUpdated, onPhotoRemoved }: CreatorListTabProps) {
+export function CreatorListTab({ artisans, onStatusUpdated, defaultCreatorSharePercent, onShareUpdated }: CreatorListTabProps) {
   const [togglingId, setTogglingId] = useState<number | string | null>(null);
-  const [removingPhoto, setRemovingPhoto] = useState<Artisan | null>(null);
   const [shareTarget, setShareTarget] = useState<Artisan | null>(null);
 
   const {
@@ -166,18 +163,6 @@ export function CreatorListTab({ artisans, onStatusUpdated, defaultCreatorShareP
                           {c.effectiveCreatorSharePercent ?? defaultCreatorSharePercent}%
                         </Button>
                       )}
-                      {c.ownAvatarUrl && !c.isOfficial && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-xs"
-                          onClick={() => setRemovingPhoto(c)}
-                        >
-                          Hapus foto toko
-                        </Button>
-                      )}
-
                       {c.isOfficial && (
                         <span className="text-xs font-medium text-muted-foreground italic">
                           Toko Resmi (Permanen Aktif)
@@ -254,19 +239,6 @@ export function CreatorListTab({ artisans, onStatusUpdated, defaultCreatorShareP
         pageSizeOptions={[10, 20, 50]}
       />
 
-      {removingPhoto && (
-        <RemoveAvatarDialog
-          open
-          onOpenChange={(o) => !o && setRemovingPhoto(null)}
-          target="toko"
-          id={String(removingPhoto.id)}
-          name={removingPhoto.brandName}
-          onDone={() => {
-            setRemovingPhoto(null);
-            onPhotoRemoved?.();
-          }}
-        />
-      )}
       {shareTarget && (
         <EditCreatorShareDialog
           open
