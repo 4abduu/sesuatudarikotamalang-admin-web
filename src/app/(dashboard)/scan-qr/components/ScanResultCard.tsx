@@ -75,19 +75,19 @@ export function ScanResultCard({ order, onConfirm, loading, onCancel }: ScanResu
         </div>
 
         <div className="sticky bottom-0 -mx-6 border-t bg-card px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:p-0">
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             variant="outline"
             onClick={onCancel}
             disabled={loading}
-            className="h-12 flex-1 text-base"
+            className="h-12 w-full text-base sm:flex-1"
           >
             Batal
           </Button>
           <Button
             onClick={onConfirm}
             disabled={loading}
-            className="h-12 flex-1 gap-2 text-base bg-primary hover:bg-primary/90"
+            className="h-12 w-full gap-2 bg-primary text-base hover:bg-primary/90 sm:flex-1"
           >
             <CheckCircle2 className="h-5 w-5" />
             {loading ? "Menyelesaikan…" : "Konfirmasi Ambil"}
@@ -132,16 +132,16 @@ export function ScanConfirmedCard({ order, onScanAgain }: ScanConfirmedCardProps
           </span>
         )}
         <div className="sticky bottom-0 -mx-6 mt-3 border-t bg-card px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:p-0">
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             onClick={onScanAgain}
             variant="outline"
-            className="h-12 flex-1 gap-2 text-base"
+            className="h-12 w-full gap-2 text-base sm:flex-1"
           >
             <RefreshCw className="h-4 w-4" />
             Scan Pesanan Lain
           </Button>
-          <Button asChild className="h-12 flex-1 text-base">
+          <Button asChild className="h-12 w-full text-base sm:flex-1">
             <Link href="/pesanan">Lihat Daftar Pesanan</Link>
           </Button>
           </div>

@@ -51,17 +51,17 @@ export function StatCard({
 }) {
   const [fg, bg] = accentPairs[accent];
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-start justify-between">
+    <div className="min-w-0 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4 xl:p-5">
+      <div className="flex items-start justify-between gap-2">
         <span className="text-sm font-medium text-muted-foreground">{label}</span>
         <span
-          className="grid h-9 w-9 place-items-center rounded-lg"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg xl:h-9 xl:w-9"
           style={{ backgroundColor: bg, color: fg }}
         >
           <Icon className="h-5 w-5" />
         </span>
       </div>
-      <p className="mt-3 font-display text-3xl font-bold text-foreground">
+      <p className="mt-3 break-words font-display text-xl font-bold text-foreground sm:text-2xl xl:text-3xl">
         {value}
       </p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}

@@ -1,36 +1,139 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sesuatu DariKota Malang — Admin Web
 
-## Getting Started
+> **Release v1.0.0** · Next.js · TypeScript · Tailwind CSS
 
-First, run the development server:
+Dashboard internal untuk mengelola katalog, kreator, produk, stok, pesanan,
+ulasan, jadwal pickup, pengajuan konsinyasi, dan pengaturan aplikasi.
 
-```bash
+> Aplikasi ini bukan storefront publik. Pengguna biasa dan kreator memakai
+> aplikasi Flutter; admin memakai dashboard web ini.
+
+## Daftar isi
+
+- [Fitur](#fitur)
+- [Menjalankan lokal](#menjalankan-lokal)
+- [Konfigurasi](#konfigurasi)
+- [Build dan deployment](#build-dan-deployment)
+- [Quality checks](#quality-checks)
+- [Struktur folder](#struktur-folder)
+- [Catatan rilis](#catatan-rilis)
+
+## Fitur
+
+- Dashboard ringkasan operasional.
+- CRUD produk, kategori, varian, foto, cerita, dan link marketplace.
+- Moderasi/persetujuan produk dan pengajuan kreator.
+- Pengelolaan stok dan riwayat pergerakan stok.
+- Pengelolaan order, status pickup, refund, dan scan QR.
+- Pengelolaan kreator, persentase bagi hasil, status aktif, serta foto profil/toko.
+- Pengelolaan ulasan, jadwal pickup, hari libur, dan pengaturan publik.
+- Upload foto dengan penanda visual saat file ditolak.
+- Layout responsif untuk desktop dan layar lebih kecil.
+
+Backend tetap menjadi sumber kebenaran untuk aturan bisnis, harga, stok, status
+order, pembayaran, dan otorisasi.
+
+## Menjalankan lokal
+
+### Prasyarat
+
+- Node.js LTS dan npm.
+- Backend API berjalan di lokal atau URL deployment.
+- Akses admin yang valid pada backend.
+
+### Instalasi
+
+\`\`\`bash
+npm install
+\`\`\`
+
+Buat \`.env.local\`:
+
+\`\`\`env
+NEXT_PUBLIC_API_URL=http://localhost:4000
+\`\`\`
+
+Jalankan:
+
+\`\`\`bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+\`\`\`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Konfigurasi
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Contoh | Keterangan |
+|---|---|---|
+| \`NEXT_PUBLIC_API_URL\` | \`https://api.sesuatudarikotamalang.my.id\` | Base URL backend tanpa slash terakhir |
 
-## Learn More
+Jangan menaruh API key backend, password database, JWT secret, atau kredensial
+Midtrans di repo admin-web. Nilai frontend yang diawali \`NEXT_PUBLIC_\` dapat
+terlihat di browser dan hanya boleh berisi URL publik/non-secret.
 
-To learn more about Next.js, take a look at the following resources:
+## Alur penggunaan admin
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Login melalui halaman admin.
+2. Verifikasi dashboard dan status koneksi API.
+3. Kelola kategori sebelum membuat produk.
+4. Buat produk, susun opsi varian, tautkan foto ke kombinasi varian, lalu atur
+   stok melalui angka stok pada kartu kombinasi.
+5. Tinjau pengajuan kreator dan produk yang menunggu moderasi.
+6. Kelola order, pembayaran, pickup, dan status penyelesaian.
+7. Cek pengaturan jadwal, batas pickup, refund, dan notifikasi.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Jika upload ditolak backend, foto terkait harus tetap terlihat dengan border merah
+dan pesan error spesifik. Jangan menghapus error tersebut dengan fallback
+generik karena frontend perlu menunjukkan file mana yang perlu diganti.
 
-## Deploy on Vercel
+## Build dan deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Build production:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+\`\`\`bash
+npm run build
+npm run start
+\`\`\`
+
+Deployment production memakai Vercel:
+
+1. Import repository admin-web.
+2. Set Root Directory ke folder project admin-web.
+3. Set Framework Preset ke Next.js.
+4. Tambahkan \`NEXT_PUBLIC_API_URL\` pada Environment Variables Production.
+5. Deploy branch production.
+6. Tambahkan custom domain, misalnya \`admin.sesuatudarikotamalang.my.id\`.
+7. Pastikan domain admin ditambahkan ke \`CORS_ALLOWED_ORIGINS\` backend.
+
+Jangan memasukkan secret backend ke Environment Variables Vercel.
+
+## Quality checks
+
+\`\`\`bash
+npm run lint
+npm run build
+\`\`\`
+
+Lint dapat menampilkan warning unused import atau React hook dependency. Warning
+tidak menggagalkan build, tetapi sebaiknya dibereskan bertahap.
+
+## Struktur folder
+
+\`\`\`text
+src/
+├── app/           # route dan halaman Next.js
+├── components/    # komponen UI bersama
+├── data/          # data demo/statik yang masih dipakai UI tertentu
+├── hooks/         # custom React hooks
+├── lib/           # API client, tipe, format, dan helper
+├── styles/        # stylesheet tambahan
+└── fonts/         # font lokal aplikasi
+public/
+└── brand/         # logo dan aset branding
+\`\`\`
+
+## Release v1.0.0
+
+Rilis pertama dashboard internal untuk demo akademik dan operasi dasar toko.
+Sebelum penggunaan publik, pastikan auth backend sudah aktif, API URL production
+benar, CORS sudah memuat domain admin, dan tidak ada token rahasia di bundle.

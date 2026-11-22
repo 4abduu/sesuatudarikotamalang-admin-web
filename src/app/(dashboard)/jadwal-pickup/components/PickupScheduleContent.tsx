@@ -443,7 +443,7 @@ function HoursCard({ settings, onSaved }: { settings: PickupSettings; onSaved: (
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
           <div className="space-y-1.5">
             <Label htmlFor="open-time">Jam buka</Label>
             <Select value={openTime} onValueChange={setOpenTime} disabled={saving}>

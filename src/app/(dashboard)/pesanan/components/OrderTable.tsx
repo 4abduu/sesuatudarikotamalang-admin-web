@@ -157,7 +157,7 @@ export function OrderTable({ orders }: OrderTableProps) {
       </Card>
 
       {/* Mobile stacked cards */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-3 xl:hidden">
         {orders.map((o) => {
           const firstItem = o.items?.[0];
           const remainingCount = (o.items?.length || 0) - 1;

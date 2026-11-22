@@ -107,7 +107,7 @@ export function DashboardContent() {
       />
 
       {/* 2 & 3. Baris Grafik: Pendapatan Minggu Ini + Donut Status Pesanan */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:gap-6">
         <RevenueChartCard
           revenueByDay={data.revenueByDay}
           revenue7Days={data.revenue7Days}
@@ -116,13 +116,13 @@ export function DashboardContent() {
       </div>
 
       {/* 4 & 5. Baris Slot Populer + Top 5 Produk Terlaris */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:gap-6">
         <PopularSlotsCard slotDistribution={data.slotDistribution} />
         <TopSellingCard topSellingProducts={data.topSellingProducts} />
       </div>
 
       {/* 6. Baris Aktivitas Terbaru + Pickup Mendatang */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:gap-6">
         <RecentActivityCard recentActivity={data.recentActivity} />
         <UpcomingPickupsCard upcomingPickups={data.upcomingPickups} />
       </div>

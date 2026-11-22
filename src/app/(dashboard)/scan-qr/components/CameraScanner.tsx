@@ -248,7 +248,7 @@ export function CameraScanner({
   const isScanning = status === "scanning";
 
   return (
-    <div className="relative mx-auto aspect-square max-h-[65dvh] w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className="relative mx-auto aspect-square max-h-[65dvh] w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:max-h-none">
       {/* Video selalu ada di DOM supaya srcObject tidak terputus saat state berubah */}
       <video ref={videoRef} className="h-full w-full object-cover" autoPlay muted playsInline />
       <canvas ref={canvasRef} className="hidden" />
@@ -294,7 +294,7 @@ export function CameraScanner({
 
       {/* Bingkai pemindai */}
       {isScanning && (
-        <div className="pointer-events-none absolute inset-[12%]">
+        <div className="pointer-events-none absolute inset-[12%] lg:inset-8">
           <span className="absolute left-0 top-0 h-10 w-10 border-l-4 border-t-4 border-primary" />
           <span className="absolute right-0 top-0 h-10 w-10 border-r-4 border-t-4 border-primary" />
           <span className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-primary" />

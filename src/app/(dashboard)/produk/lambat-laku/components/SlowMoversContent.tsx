@@ -178,7 +178,7 @@ export function SlowMoversContent() {
             />
           </div>
         </Card>
-        <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-3 xl:hidden">
           {pageItems.map((p) => (
             <Card key={p.id} className="p-4">
               <div className="flex items-start justify-between gap-3">

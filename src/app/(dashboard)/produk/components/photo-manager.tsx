@@ -85,7 +85,7 @@ const nextId = () => `photo-${++seq}`;
 export const isLinked = (i: PhotoItem) => (i.variantCombination?.length ?? 0) > 0;
 
 /** Membangun daftar dari respons API (`images` + `imageVariants`), sudah dinormalkan. */
-export function createPhotoItems(images: string[], links: ImageVariantLink[] = []): PhotoItem[] {
+export function createPhotoItems(images: string[], links: ImageVariantLink[] = [], variantChoices: VariantChoice[] = []): PhotoItem[] {
   const byUrl = new Map(links.map((l) => [l.url, l] as const));
   return normalizePhotoOrder(
     images.map((url) => {
@@ -103,12 +103,29 @@ export function createPhotoItems(images: string[], links: ImageVariantLink[] = [
           : [],
       };
     }),
+    variantChoices,
   );
 }
 
-/** Foto tanpa tautan lebih dulu, foto bertautan di akhir (sama dengan normalisasi backend). */
-export function normalizePhotoOrder(items: PhotoItem[]): PhotoItem[] {
-  return [...items.filter((i) => !isLinked(i)), ...items.filter(isLinked)];
+/** Foto tanpa tautan lebih dulu, foto bertautan mengikuti urutan nilai varian. */
+export function normalizePhotoOrder(items: PhotoItem[], variantChoices: VariantChoice[] = []): PhotoItem[] {
+  const plain = items.filter((i) => !isLinked(i));
+  const linked = items.filter(isLinked);
+  const originalIndex = new Map(items.map((item, index) => [item.id, index]));
+  const rank = (item: PhotoItem) => (variantChoices.length === 0 ? [] : variantChoices.map((choice) => {
+    const value = item.variantCombination?.find((part) => part.option === choice.option)?.value;
+    const index = value == null ? choice.values.length + 1 : choice.values.indexOf(value);
+    return index < 0 ? choice.values.length : index;
+  }));
+  linked.sort((a, b) => {
+    const aRank = rank(a);
+    const bRank = rank(b);
+    for (let i = 0; i < aRank.length; i++) {
+      if (aRank[i] !== bRank[i]) return aRank[i] - bRank[i];
+    }
+    return (originalIndex.get(a.id) ?? 0) - (originalIndex.get(b.id) ?? 0);
+  });
+  return [...plain, ...linked];
 }
 
 /** Benar bila kedua daftar identik (id, urutan, tautan). Untuk `dirty`. */
@@ -443,7 +460,7 @@ export function PhotoManager({
       setAdding(false);
     }
     if (files.length > remaining) errors.push(`Maksimal ${max} foto. Sisanya diabaikan.`);
-    if (accepted.length > 0) onChange(normalizePhotoOrder([...items, ...accepted]));
+    if (accepted.length > 0) onChange(normalizePhotoOrder([...items, ...accepted], variantChoices));
     errors.slice(0, 3).forEach((m) => toast.error(m));
     if (errors.length > 3) toast.error(`Dan ${errors.length - 3} pesan galat lainnya.`);
   }
@@ -474,6 +491,7 @@ export function PhotoManager({
             ? { ...i, variantCombination: combination ?? [] }
             : i,
         ),
+        variantChoices,
       ),
     );
   }

@@ -109,12 +109,11 @@ export function ScanQrContent() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl lg:max-w-5xl">
+    <div className="mx-auto max-w-2xl">
       {state === "confirmed" && matchedOrder ? (
         <ScanConfirmedCard order={matchedOrder} onScanAgain={handleReset} />
       ) : (
-        <div className="mx-auto max-w-md lg:grid lg:max-w-5xl lg:grid-cols-2 lg:items-start lg:gap-6">
-          <div>
+        <div className="mx-auto max-w-md">
           {/* Kamera Pemindai. Tidak ikut di-remount saat pindah idle <-> preview. */}
           <CameraScanner
             onScan={handleVerifyOrder}
@@ -125,21 +124,16 @@ export function ScanQrContent() {
 
           {/* Input manual selalu tersedia sebagai cadangan (izin ditolak, tanpa HTTPS, kamera hitam, decoder gagal) */}
           {state !== "preview" && <ManualOrderInput onSearch={handleVerifyOrder} loading={loading} />}
-          </div>
 
           {/* Kartu Pratinjau Order & Tombol Konfirmasi Selesai */}
-          <div ref={resultRef} className="lg:min-w-0">
-            {state === "preview" && matchedOrder ? (
+          <div ref={resultRef}>
+            {state === "preview" && matchedOrder && (
               <ScanResultCard
                 order={matchedOrder}
                 onConfirm={handleConfirmPickup}
                 loading={loading}
                 onCancel={handleReset}
               />
-            ) : (
-              <div className="mt-6 hidden rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center text-sm text-muted-foreground lg:block">
-                Hasil scan akan muncul di sini
-              </div>
             )}
           </div>
         </div>
