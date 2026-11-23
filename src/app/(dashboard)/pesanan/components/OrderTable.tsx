@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { OrderStatusBadge } from "@/app/(dashboard)/components/admin-ui";
 import { formatRupiah } from "@/lib/format";
+import { summarizeOrderItems } from "@/lib/order-items";
 import { Order } from "@/lib/types";
 import { HolidayAffectedBadge } from "./HolidayAffectedBadge";
 
@@ -69,6 +70,7 @@ export function OrderTable({ orders }: OrderTableProps) {
               const remainingCount = (o.items?.length || 0) - 1;
               const sellerName = firstItem?.product?.artisan?.brandName;
               const isOfficial = firstItem?.product?.artisan?.isOfficial;
+              const itemSummary = summarizeOrderItems(o);
               const needsRefund = o.refundStatus === "menunggu" || ((o.status === "kedaluwarsa" || o.status === "dibatalkan") && o.payment?.status === "settlement");
 
               return (
@@ -85,7 +87,7 @@ export function OrderTable({ orders }: OrderTableProps) {
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm text-foreground font-medium">
                         {firstItem?.product?.name || "Produk"}
-                        {remainingCount > 0 ? ` (+${remainingCount} lainnya)` : ""}
+                            {remainingCount > 0 ? ` (+${remainingCount} lainnya)` : ""} · {itemSummary.totalQuantity} item
                       </span>
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <span>{(firstItem?.variant?.combination || []).join(" / ") || "Default"}</span>
@@ -163,6 +165,7 @@ export function OrderTable({ orders }: OrderTableProps) {
           const remainingCount = (o.items?.length || 0) - 1;
           const sellerName = firstItem?.product?.artisan?.brandName;
           const isOfficial = firstItem?.product?.artisan?.isOfficial;
+          const itemSummary = summarizeOrderItems(o);
           const needsRefund = o.refundStatus === "menunggu" || ((o.status === "kedaluwarsa" || o.status === "dibatalkan") && o.payment?.status === "settlement");
 
           return (
@@ -195,7 +198,7 @@ export function OrderTable({ orders }: OrderTableProps) {
                     </p>
                     <p className="text-sm text-foreground font-medium">
                       {firstItem?.product?.name || "Produk"}
-                      {remainingCount > 0 ? ` (+${remainingCount})` : ""}
+                      {remainingCount > 0 ? ` (+${remainingCount})` : ""} · {itemSummary.totalQuantity} item
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {(firstItem?.variant?.combination || []).join(" / ") || "Varian default"}

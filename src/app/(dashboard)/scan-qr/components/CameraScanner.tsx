@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
-import { Camera, CameraOff, Loader2, QrCode, Square } from "lucide-react";
+import { Camera, CameraOff, Loader2, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface CameraScannerProps {
@@ -10,6 +10,7 @@ interface CameraScannerProps {
   onScan: (code: string) => void;
   /** Saat true, kamera tetap hidup tetapi hasil decode diabaikan (mis. request sedang berjalan). */
   disabled?: boolean;
+  processing?: boolean;
   /** Bila true, kamera dinyalakan otomatis saat komponen dipasang (dipakai setelah "Scan lagi"). */
   autoStart?: boolean;
   /** Memberi tahu induk bahwa kamera sedang aktif atau tidak. */
@@ -29,6 +30,7 @@ const DUPLICATE_WINDOW_MS = 3000; // QR yang sama dalam jendela ini diabaikan
 export function CameraScanner({
   onScan,
   disabled = false,
+  processing = false,
   autoStart = false,
   onActiveChange,
 }: CameraScannerProps) {
@@ -172,7 +174,7 @@ export function CameraScanner({
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
 
@@ -200,7 +202,12 @@ export function CameraScanner({
 
       const Detector = (window as unknown as { BarcodeDetector?: new (opts: { formats: string[] }) => BarcodeDetectorLike })
         .BarcodeDetector;
-      detectorRef.current = Detector ? new Detector({ formats: ["qr_code"] }) : null;
+      try {
+        detectorRef.current = Detector ? new Detector({ formats: ["qr_code"] }) : null;
+      } catch {
+        // Browser bisa menyediakan API tanpa mendukung format QR; tetap gunakan jsQR.
+        detectorRef.current = null;
+      }
 
       lastScanRef.current = null;
       setStatus("scanning");
@@ -293,7 +300,7 @@ export function CameraScanner({
       )}
 
       {/* Bingkai pemindai */}
-      {isScanning && (
+      {isScanning && !disabled && (
         <div className="pointer-events-none absolute inset-[12%] lg:inset-8">
           <span className="absolute left-0 top-0 h-10 w-10 border-l-4 border-t-4 border-primary" />
           <span className="absolute right-0 top-0 h-10 w-10 border-r-4 border-t-4 border-primary" />
@@ -321,9 +328,16 @@ export function CameraScanner({
       <div className="absolute left-1/2 top-3 -translate-x-1/2">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1 text-xs font-semibold text-muted-foreground shadow-sm">
           <QrCode className="h-3.5 w-3.5" />
-          {isScanning ? (disabled ? "Memproses..." : "Kamera Aktif — Arahkan ke QR") : "Scanner Siap"}
+          {isScanning ? (disabled ? "Pemindaian dijeda" : "Kamera Aktif — Arahkan ke QR") : "Scanner Siap"}
         </span>
       </div>
+      {processing && (
+        <div role="status" aria-live="polite" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card/95 p-6 text-center">
+          <Loader2 className="h-9 w-9 animate-spin text-primary" />
+          <p className="font-display font-bold">Memeriksa pesanan...</p>
+          <p className="text-sm text-muted-foreground">Nomor sudah diterima. Sedang mengambil data dari server.</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -54,6 +54,8 @@ import { Order, OrderStatus } from "@/lib/types";
 import { formatRupiah } from "@/lib/format";
 import { toast } from "sonner";
 import { HolidayAffectedBadge, HolidayAffectedNotice } from "../../components/HolidayAffectedBadge";
+import { summarizeOrderItems } from "@/lib/order-items";
+import { OrderItemsList } from "@/app/(dashboard)/components/OrderItemsList";
 
 /* ─────────────────────────────────────────────────────────────────────────── *
  *  Peta transisi status yang diizinkan backend (API_CONTRACT.md §9)
@@ -371,8 +373,7 @@ function OrderDetail({
     }
   };
 
-  const firstItem = order.items?.[0];
-  const remainingCount = (order.items?.length ?? 0) - 1;
+  const itemSummary = summarizeOrderItems(order);
 
   return (
     <div>
@@ -722,34 +723,15 @@ function OrderDetail({
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent/15 text-accent">
                 <Package className="h-4 w-4" />
               </span>
-              Info Produk
+              Item Pesanan
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            {order.items?.map((item, i) => (
-              <div
-                key={item.id}
-                className={
-                  i > 0 ? "border-t border-border pt-3" : undefined
-                }
-              >
-                <p className="font-medium text-foreground">
-                  {item.product?.name ?? "Produk"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {(item.variant?.combination ?? []).join(" / ") ||
-                    "Varian default"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatRupiah(item.priceSnapshot)}
-                </p>
-              </div>
-            ))}
-            {remainingCount > 0 && (
-              <p className="text-xs text-muted-foreground">
-                +{remainingCount} item lainnya
-              </p>
-            )}
+            <OrderItemsList items={order.items ?? []} />
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <span className="text-xs text-muted-foreground">Jumlah unit</span>
+              <span className="font-medium text-foreground">{itemSummary.totalQuantity}</span>
+            </div>
             <div className="flex items-center justify-between border-t border-border pt-3">
               <span className="text-xs text-muted-foreground">Total harga</span>
               <span className="font-display text-lg font-bold text-foreground">

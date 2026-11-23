@@ -23,6 +23,7 @@ export function ScanQrContent() {
   const [state, setState] = useState<ScanFlowState>("idle");
   const [matchedOrder, setMatchedOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
   // Kamera pernah diaktifkan oleh admin: setelah "Scan lagi" dinyalakan otomatis.
   const [cameraWanted, setCameraWanted] = useState(false);
   // Penjaga request: hanya satu request aktif walau QR yang sama terbaca berulang.
@@ -40,20 +41,24 @@ export function ScanQrContent() {
     if (inFlightRef.current) return;
     const orderNumber = extractOrderNumber(rawCode);
     if (!orderNumber) {
-      toast.error("Format QR tidak dikenali. Nomor pesanan harus seperti SDK-1234.");
+      setLookupError("Format QR tidak dikenali. Nomor pesanan harus seperti SDK-1234.");
       return;
     }
 
     inFlightRef.current = true;
     setLoading(true);
+    setLookupError(null);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
     try {
       const res = await apiFetch<{ orders: Order[] }>(
-        `/api/admin/orders?search=${encodeURIComponent(orderNumber)}`
+        `/api/admin/orders?search=${encodeURIComponent(orderNumber)}`,
+        { signal: controller.signal }
       );
       const found = res.orders?.find((o) => o.orderNumber.toUpperCase() === orderNumber);
 
       if (!found) {
-        toast.error(`Pesanan ${orderNumber} tidak ditemukan di database.`);
+        setLookupError(`Pesanan ${orderNumber} tidak ditemukan. Periksa nomor pesanan atau pindai QR lain.`);
         return;
       }
 
@@ -61,12 +66,11 @@ export function ScanQrContent() {
       setState("preview");
       toast.success(`Pesanan ${orderNumber} ditemukan`);
     } catch (err) {
-      if (err instanceof ApiError) {
-        toast.error(err.message);
-      } else {
-        toast.error("Gagal memeriksa nomor pesanan");
-      }
+      setLookupError(controller.signal.aborted
+        ? "Server terlalu lama merespons. Periksa koneksi, lalu coba lagi."
+        : err instanceof ApiError ? err.message : "Gagal memeriksa nomor pesanan. Periksa koneksi, lalu coba lagi.");
     } finally {
+      window.clearTimeout(timeout);
       inFlightRef.current = false;
       setLoading(false);
     }
@@ -104,6 +108,7 @@ export function ScanQrContent() {
   };
 
   const handleReset = () => {
+    setLookupError(null);
     setMatchedOrder(null);
     setState("idle");
   };
@@ -118,9 +123,11 @@ export function ScanQrContent() {
           <CameraScanner
             onScan={handleVerifyOrder}
             disabled={state === "preview" || loading}
+            processing={state === "idle" && loading}
             autoStart={cameraWanted}
             onActiveChange={setCameraWanted}
           />
+          {lookupError && <p role="alert" className="mt-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{lookupError}</p>}
 
           {/* Input manual selalu tersedia sebagai cadangan (izin ditolak, tanpa HTTPS, kamera hitam, decoder gagal) */}
           {state !== "preview" && <ManualOrderInput onSearch={handleVerifyOrder} loading={loading} />}

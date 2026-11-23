@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { OrderStatusBadge } from "@/app/(dashboard)/components/admin-ui";
 import { formatRupiah } from "@/lib/format";
 import { Order } from "@/lib/types";
+import { summarizeOrderItems } from "@/lib/order-items";
+import { OrderItemsList } from "@/app/(dashboard)/components/OrderItemsList";
 
 const PICKUP_LOCATION = "Jl. Jend. Basuki Rahmat No. 45, Kayutangan Heritage, Malang";
 
@@ -25,8 +27,7 @@ interface ScanResultCardProps {
 }
 
 export function ScanResultCard({ order, onConfirm, loading, onCancel }: ScanResultCardProps) {
-  const firstItem = order.items?.[0];
-  const remainingCount = (order.items?.length || 0) - 1;
+  const summary = summarizeOrderItems(order);
 
   return (
     <Card className="mt-6 border-primary/30">
@@ -48,13 +49,12 @@ export function ScanResultCard({ order, onConfirm, loading, onCancel }: ScanResu
               <User className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="break-words">{order.user?.name ?? "Pelanggan"}</span>
             </div>
-            <p className="mt-1 text-sm font-medium text-foreground">
-              <span className="break-words">{firstItem?.product?.name || "Produk"}</span>
-              {remainingCount > 0 ? ` (+${remainingCount} item lainnya)` : ""}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Varian: {(firstItem?.variant?.combination || []).join(" / ") || "Default"}
-            </p>
+            <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Barang yang diserahkan</p>
+            <div className="mt-1 space-y-2">
+              <OrderItemsList items={order.items} />
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">{summary.lineCount} item pesanan / {summary.totalQuantity} unit</p>
+            <Link href={`/pesanan/${order.id}`} className="inline-block py-2 text-sm font-medium text-primary underline">Buka detail pesanan</Link>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />
@@ -105,7 +105,7 @@ interface ScanConfirmedCardProps {
 }
 
 export function ScanConfirmedCard({ order, onScanAgain }: ScanConfirmedCardProps) {
-  const firstItem = order.items?.[0];
+  const summary = summarizeOrderItems(order);
 
   return (
     <Card className="border-accent/40">
@@ -122,10 +122,10 @@ export function ScanConfirmedCard({ order, onScanAgain }: ScanConfirmedCardProps
             <span className="font-semibold text-foreground">
               {order.orderNumber}
             </span>{" "}
-            — {order.user?.name ?? "Pelanggan"} telah mengambil barang.
+            — {order.user?.name ?? "Pelanggan"} telah mengambil {summary.totalQuantity} item.
           </p>
         </div>
-        {firstItem?.product?.name && (
+        {order.items.length > 0 && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
             <Sparkles className="h-3.5 w-3.5" />
             Status order diperbarui menjadi Selesai
