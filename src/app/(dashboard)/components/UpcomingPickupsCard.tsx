@@ -1,6 +1,7 @@
 import { Truck, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardData } from "@/lib/types";
+import { summarizeOrderItems } from "@/lib/order-items";
 
 type UpcomingPickupItem = NonNullable<DashboardData["upcomingPickups"]>[number];
 
@@ -37,7 +38,7 @@ export function UpcomingPickupsCard({ upcomingPickups = [] }: UpcomingPickupsCar
               <p className="mt-1 min-w-0 break-words text-sm text-foreground">{o.user?.name ?? "Pelanggan"}</p>
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
                 {o.items?.[0]?.product?.name ?? "Produk"}
-                {(o.items?.length ?? 0) > 1 ? ` (+${(o.items?.length ?? 0) - 1} lainnya)` : ""}
+                {(o.items?.length ?? 0) > 1 ? ` (+${(o.items?.length ?? 0) - 1} lainnya)` : ""} · {summarizeOrderItems(o as any).totalQuantity} item
               </p>
               <p className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-primary">
                 <Clock className="h-3.5 w-3.5" />

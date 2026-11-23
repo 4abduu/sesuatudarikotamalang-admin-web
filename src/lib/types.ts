@@ -155,6 +155,7 @@ export interface OrderItem {
   priceSnapshot: number;
   product?: Product;
   variant?: Variant;
+  review?: { id: number | string } | null;
 }
 
 export interface Payment {
